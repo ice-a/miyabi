@@ -3,11 +3,11 @@ package scan
 import (
 	"testing"
 
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func TestFindDirectoryNFOMatchesCatalogueAlias(t *testing.T) {
-	files := []pan.File{
+	files := []storage.File{
 		{ID: "different", Name: "LUXU-1099.nfo"},
 		{ID: "alias", Name: "259LUXU-1899.nfo"},
 	}
@@ -18,7 +18,7 @@ func TestFindDirectoryNFOMatchesCatalogueAlias(t *testing.T) {
 }
 
 func TestDirectoryNFOSelectionPrefersExactFileOverAliasesAndFolders(t *testing.T) {
-	files := []pan.File{
+	files := []storage.File{
 		{ID: "folder", Name: "LUXU-1899.nfo", IsDirectory: true},
 		{ID: "alias", Name: "259LUXU-1899.nfo"},
 		{ID: "exact", Name: "luxu-1899.NFO"},

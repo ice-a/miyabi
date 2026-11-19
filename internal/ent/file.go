@@ -38,7 +38,7 @@ type File struct {
 	AccountID string `json:"account_id,omitempty"`
 	// RootID holds the value of the "root_id" field.
 	RootID string `json:"root_id,omitempty"`
-	// 115 upload time in Unix seconds; 0 when unknown or local.
+	// Upload time in Unix seconds when the source records one; 0 when unknown or local.
 	UploadTime int64 `json:"upload_time,omitempty"`
 	// Path holds the value of the "path" field.
 	Path string `json:"path,omitempty"`

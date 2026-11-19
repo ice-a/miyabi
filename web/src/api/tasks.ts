@@ -2,13 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { apiGet, apiPost, apiPut } from '@/api/client'
-import { offlineKeys } from '@/api/offline'
 import { refreshQueries } from '@/api/query-refresh'
-import type { PanDirectory } from '@/api/pan'
+import type { StorageDirectory } from '@/api/storage'
 
 export type LibrarySource = {
   account_id: string
-  directory: PanDirectory
+  directory: StorageDirectory
 }
 
 export type TaskRevisions = { library: number; offline: number; monitor: number }
@@ -52,8 +51,8 @@ export type ScanTask = TaskBase & {
   }
 }
 
-// A queued subscription batch: each movie is submitted to 115, left waiting
-// for a qualifying magnet, or failed.
+// A queued subscription batch: each movie records the best matching magnet and
+// keeps waiting, or fails.
 export type BatchTask = TaskBase & {
   type: 'subscription_batch'
   batch: {
@@ -83,7 +82,7 @@ export function useRetryTask() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => apiPost<Task>(`/api/tasks/${id}/retry`),
-    onSuccess: () => refreshQueries(queryClient, taskKeys.all, offlineKeys.all),
+    onSuccess: () => refreshQueries(queryClient, taskKeys.all),
     onError: error => toast.error('重试失败', { description: error.message })
   })
 }

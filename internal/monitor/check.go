@@ -134,24 +134,13 @@ func (service *Service) checkMovie(ctx context.Context, record *ent.Subscription
 		service.tasks.NotifyMonitorChanged()
 		return nil
 	}
-	if !record.AutoDownload {
-		// Remember the pick for the user and look again tomorrow.
-		if err := record.Update().SetHash(best.Hash).SetLastCheckedAt(now).SetNextCheckAt(nextDaily(now, checkTime)).
-			AddChecks(1).ClearError().Exec(ctx); err != nil && !ent.IsNotFound(err) {
-			return fmt.Errorf("update subscription %d: %w", record.ID, err)
-		}
-		service.tasks.NotifyMonitorChanged()
-		return nil
+	// No cloud drive submits magnets on the user's behalf anymore: remember the
+	// pick so the user can grab it, and look again tomorrow.
+	if err := record.Update().SetHash(best.Hash).SetLastCheckedAt(now).SetNextCheckAt(nextDaily(now, checkTime)).
+		AddChecks(1).ClearError().Exec(ctx); err != nil && !ent.IsNotFound(err) {
+		return fmt.Errorf("update subscription %d: %w", record.ID, err)
 	}
-	submission, err := service.offline.Add(ctx, record.TargetID, best.Hash)
-	if err != nil {
-		return service.deferCheck(ctx, record, now, domain.E(domain.KindUpstream, "加入 115 失败："+domain.PublicMessage(err), err))
-	}
-	if err := record.Update().SetStatus(subscription.StatusAdded).SetHash(best.Hash).SetTaskID(submission.TaskID).
-		SetLastCheckedAt(now).AddChecks(1).ClearNextCheckAt().ClearError().Exec(ctx); err != nil && !ent.IsNotFound(err) {
-		return fmt.Errorf("complete subscription %d: %w", record.ID, err)
-	}
-	slog.InfoContext(ctx, "subscribed movie submitted to 115", "code", record.Code, "hash", best.Hash, "pan_task_id", submission.TaskID)
+	slog.InfoContext(ctx, "subscribed movie magnet found", "code", record.Code, "hash", best.Hash)
 	service.tasks.NotifyMonitorChanged()
 	return nil
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/ppxb/miyabi/internal/config"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func TestExportUsesResolvedApplicationDefaultsAndOverrides(t *testing.T) {
@@ -41,7 +41,7 @@ func TestExportUsesResolvedApplicationDefaultsAndOverrides(t *testing.T) {
 			}
 			doc := nfo.Movie{Code: "ABP-123", Title: "Saved title"}
 			if _, err := WriteMedia(Config{EmbyDir: cfg.EmbyDir, PublicURL: cfg.PublicURL, STRMToken: cfg.STRMToken}, doc.Code, doc,
-				[]pan.File{{ID: "video-1", Name: "ABP-123.mp4"}}, nil, nil); err != nil {
+				[]storage.File{{ID: "video-1", Name: "ABP-123.mp4"}}, nil, nil); err != nil {
 				t.Fatal(err)
 			}
 			data, err := os.ReadFile(filepath.Join(wantDir, "ABP", doc.Code, doc.Code+".strm"))
@@ -80,7 +80,7 @@ func TestExportRejectsMissingDestinationsBeforeCreatingFiles(t *testing.T) {
 			t.Chdir(t.TempDir())
 			doc := nfo.Movie{Code: "ABP-123", Title: "Saved title"}
 			_, err := WriteMedia(Config{EmbyDir: tc.directory, PublicURL: tc.publicURL, STRMToken: ""}, doc.Code, doc,
-				[]pan.File{{ID: "video-1", Name: "ABP-123.mp4"}}, []byte("poster"), []byte("fanart"))
+				[]storage.File{{ID: "video-1", Name: "ABP-123.mp4"}}, []byte("poster"), []byte("fanart"))
 			if err == nil {
 				t.Fatal("missing export destination accepted")
 			}

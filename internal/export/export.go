@@ -19,12 +19,22 @@ import (
 // STRMPlayPath is the API route prefix for media streaming playback in .strm files.
 const STRMPlayPath = "/api/strm/play/"
 
-var strmPlayRegex = regexp.MustCompile(`/api/strm/play/([a-zA-Z0-9_\-]+)`)
+var strmPlayRegex = regexp.MustCompile(`/api/strm/play/([^?\s]+)`)
 
-// ParseSTRMFileID extracts the 115 file ID from a .strm file's content or URL.
+// PathEscapeID encodes a file ID for use as one URL path segment. Indexed local
+// files are identified by absolute paths, which contain separators and drive
+// letters, so the STRM body must escape them to stay a single segment.
+func PathEscapeID(fileID string) string {
+	return url.PathEscape(fileID)
+}
+
+// ParseSTRMFileID extracts the media file ID from a .strm file's content or URL.
 func ParseSTRMFileID(content string) string {
-	match := strmPlayRegex.FindStringSubmatch(content)
+	match := strmPlayRegex.FindStringSubmatch(strings.TrimSpace(content))
 	if len(match) > 1 {
+		if decoded, err := url.PathUnescape(match[1]); err == nil {
+			return decoded
+		}
 		return match[1]
 	}
 	return ""
@@ -38,7 +48,8 @@ func EmbyMovieDir(embyDir, code string) string {
 }
 
 // STRMContent is the body of a .strm file: the relay URL that resolves the
-// 115 video to a fresh stream whenever Emby plays it.
+// video to a fresh stream whenever Emby plays it. fileID must already be
+// escaped with PathEscapeID when it carries separators.
 // publicURL must come from the resolved export configuration.
 func STRMContent(publicURL, fileID, strmToken string) []byte {
 	publicURL = strings.TrimRight(strings.TrimSpace(publicURL), "/")
@@ -79,7 +90,7 @@ func RewriteSTRM(ctx context.Context, embyDir, publicURL, strmToken string) (int
 		if fileID == "" {
 			return nil
 		}
-		newContent := STRMContent(publicURL, fileID, strmToken)
+		newContent := STRMContent(publicURL, PathEscapeID(fileID), strmToken)
 		if !bytes.Equal(bytes.TrimSpace(data), bytes.TrimSpace(newContent)) {
 			if err := atomicfile.WriteFile(path, newContent, 0o644); err != nil {
 				return fmt.Errorf("rewrite STRM %s: %w", path, err)

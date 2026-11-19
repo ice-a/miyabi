@@ -108,7 +108,7 @@ export function DataSection() {
           <DialogHeader>
             <DialogTitle>清理未使用的图片缓存？</DialogTitle>
             <DialogDescription>
-              仅删除未被影片或未完成任务引用的图片。媒体库封面和 115 网盘文件会保留。
+              仅删除未被影片或未完成任务引用的图片。媒体库封面与媒体目录中的文件会保留。
             </DialogDescription>
           </DialogHeader>
           {clearCache.error ? <InlineError>{clearCache.error.message}</InlineError> : null}

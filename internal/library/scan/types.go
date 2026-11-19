@@ -1,6 +1,6 @@
 package scan
 
-import "github.com/ppxb/miyabi/internal/pan"
+import "github.com/ppxb/miyabi/internal/storage"
 
 // Directory describes a directory queued during BFS traversal.
 type Directory struct {
@@ -8,9 +8,9 @@ type Directory struct {
 	Path string
 }
 
-// Video wraps a 115 file with an assigned catalogue code.
+// Video wraps an indexed file with an assigned catalogue code.
 type Video struct {
-	pan.File
+	storage.File
 	Code   string
 	Manual bool
 	// DirectoryCode records a provisional part group for transactional validation.

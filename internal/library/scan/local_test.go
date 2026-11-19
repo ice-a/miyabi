@@ -17,7 +17,8 @@ import (
 	"github.com/ppxb/miyabi/internal/export"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func TestExportedPreviewsAndCatalogueEntitiesSurviveLocalRescan(t *testing.T) {
@@ -41,7 +42,7 @@ func TestExportedPreviewsAndCatalogueEntitiesSurviveLocalRescan(t *testing.T) {
 	}
 	root := t.TempDir()
 	if _, err := export.WriteMedia(export.Config{EmbyDir: root, PublicURL: "http://localhost:8080", STRMToken: ""}, doc.Code, doc,
-		[]pan.File{{ID: "preview-video", Name: doc.Code + ".mp4"}}, testJPEG(t), testJPEG(t)); err != nil {
+		[]storage.File{{ID: "preview-video", Name: doc.Code + ".mp4"}}, testJPEG(t), testJPEG(t)); err != nil {
 		t.Fatal(err)
 	}
 	store.Client.Movie.Create().SetCode(doc.Code).SetMetadata(&doc).SetScrapeStatus(movie.ScrapeStatusDone).SaveX(ctx)

@@ -26,10 +26,10 @@ test('requests use cookies without reading or sending a stored JWT', async () =>
 for (const scenario of [
   {
     name: 'JSON errors retain the server message and HTTP status',
-    body: JSON.stringify({ error: '115 登录已失效' }),
+    body: JSON.stringify({ error: '媒体目录已变更' }),
     status: 401,
     statusText: 'Unauthorized',
-    message: '115 登录已失效'
+    message: '媒体目录已变更'
   },
   {
     name: 'HTML gateway errors retain their HTTP status',
@@ -145,7 +145,7 @@ test('401 without code UNAUTHORIZED does not dispatch miyabi:unauthorized', asyn
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(
     async () =>
-      new Response(JSON.stringify({ error: '115 登录已失效' }), {
+      new Response(JSON.stringify({ error: '媒体目录已变更' }), {
         status: 401,
         statusText: 'Unauthorized'
       })
@@ -154,7 +154,7 @@ test('401 without code UNAUTHORIZED does not dispatch miyabi:unauthorized', asyn
   await assert.rejects(apiPost('/api/test'), error => {
     assert.ok(error instanceof ApiError)
     assert.equal(error.status, 401)
-    assert.equal(error.message, '115 登录已失效')
+    assert.equal(error.message, '媒体目录已变更')
     return true
   })
   assert.deepEqual(events, [])

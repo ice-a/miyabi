@@ -11,14 +11,19 @@ const maxPlaylistSize = 2 << 20
 
 var playlistURI = regexp.MustCompile(`([:,])URI="([^"]*)"`)
 
-// Rewrites URI lines and URI attributes, preserving HLS tags and byte-range metadata.
-func rewritePlaylist(body []byte, base *url.URL, register func(*url.URL, bool) (string, error)) (string, error) {
+// registerFunc records one address inside a session and returns the local path.
+type registerFunc func(spec mediaSpec) (string, error)
+
+// rewritePlaylist rewrites URI lines and URI attributes, preserving HLS tags and
+// byte-range metadata. Every address found is registered on the session, so the
+// player only ever talks to this server.
+func rewritePlaylist(body []byte, base *url.URL, register registerFunc) (string, error) {
 	rewrite := func(value string, playlist bool) (string, error) {
 		reference, err := url.Parse(value)
 		if err != nil {
-			return "", fmt.Errorf("115 playlist contains an invalid URI")
+			return "", fmt.Errorf("playlist contains an invalid URI: %w", err)
 		}
-		return register(base.ResolveReference(reference), playlist)
+		return register(mediaSpec{address: base.ResolveReference(reference).String(), playlist: playlist})
 	}
 	lines := strings.Split(string(body), "\n")
 	nextPlaylist := false

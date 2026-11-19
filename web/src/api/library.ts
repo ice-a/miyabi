@@ -4,7 +4,7 @@ import { apiGet, apiPost } from '@/api/client'
 import type { DiscoverMovieDetail } from '@/api/discover'
 import { movieStateKeys } from '@/api/movie-states'
 import { refreshQueries } from '@/api/query-refresh'
-import { panKeys, type PanAccountStatus } from '@/api/pan'
+import { storageKey, type StorageStatus } from '@/api/storage'
 import { taskKeys, type LibrarySource, type ScanTask, type Task } from '@/api/tasks'
 
 export const LIBRARY_PAGE_SIZE = 20
@@ -115,14 +115,8 @@ export function useRescrapeLibraryMovie(id: number) {
 }
 
 function cacheScanTask(queryClient: QueryClient, task: ScanTask, previous: Task[] | undefined) {
-  const account = queryClient.getQueryData<PanAccountStatus>(panKeys.account)
-  if (
-    account &&
-    (!account.connected ||
-      account.account?.id !== task.source.account_id ||
-      account.directory?.id !== task.source.directory.id)
-  )
-    return
+  const storage = queryClient.getQueryData<StorageStatus>(storageKey)
+  if (storage?.mounted && storage.directory.id !== task.source.directory.id) return
   const state = queryClient.getQueryState(taskKeys.all)
   if ((state?.fetchStatus ?? 'idle') !== 'idle' || state?.data !== previous) return
   queryClient.setQueryData<Task[]>(taskKeys.all, tasks => [

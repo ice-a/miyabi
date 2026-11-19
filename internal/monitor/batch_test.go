@@ -26,12 +26,12 @@ func TestEnqueueSingle(t *testing.T) {
 	}
 
 	f.discover.magnets["m1"] = []domain.Magnet{{Hash: "abc123", Name: "MOCK-m1", HasSubtitle: true, HD: true, Size: 1 << 30}}
-	added, err := f.service.EnqueueSingle(ctx, item.ID)
-	if err != nil || added.Status != subscription.StatusAdded || added.Hash != "abc123" || added.TaskID == nil {
-		t.Fatalf("with a magnet the subscription is submitted: %#v %v", added, err)
+	found, err := f.service.EnqueueSingle(ctx, item.ID)
+	if err != nil || found.Hash != "abc123" || found.Status == subscription.StatusAdded {
+		t.Fatalf("with a magnet the subscription records the hash and keeps waiting: %#v %v", found, err)
 	}
-	if again, err := f.service.EnqueueSingle(ctx, item.ID); err != nil || again.Status != subscription.StatusAdded || len(f.offline.submissions) != 1 {
-		t.Fatalf("enqueueing an added subscription must not resubmit: %#v %v submissions=%d", again, err, len(f.offline.submissions))
+	if again, err := f.service.EnqueueSingle(ctx, item.ID); err != nil || again.Hash != "abc123" {
+		t.Fatalf("a stored hash must stay stable across lookups: %#v %v", again, err)
 	}
 
 	actor, err := f.service.AddActor(ctx, "a1", AddActorOptions{})
@@ -119,11 +119,11 @@ func TestBatchEnqueueTask(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch := payload.Batch
-	if batch.Total != 3 || batch.Processed != 3 || batch.Submitted != 1 || batch.Waiting != 1 || batch.Failed != 1 || len(batch.Failures) != 1 || row.Progress != 100 {
+	if batch.Total != 3 || batch.Processed != 3 || batch.Submitted != 0 || batch.Waiting != 2 || batch.Failed != 1 || len(batch.Failures) != 1 || row.Progress != 100 {
 		t.Fatalf("unexpected tally %+v progress=%d", batch, row.Progress)
 	}
-	if sub := f.client.Subscription.GetX(ctx, item1.ID); sub.Status != subscription.StatusAdded || sub.Hash != "hash1" {
-		t.Fatalf("item1 must be added with hash1, got %s %s", sub.Status, sub.Hash)
+	if sub := f.client.Subscription.GetX(ctx, item1.ID); sub.Status != subscription.StatusWaiting || sub.Hash != "hash1" {
+		t.Fatalf("item1 must record hash1 and keep waiting, got %s %s", sub.Status, sub.Hash)
 	}
 	if sub := f.client.Subscription.GetX(ctx, item2.ID); sub.Status != subscription.StatusWaiting || !sub.AutoDownload {
 		t.Fatalf("item2 must keep waiting with auto-download on, got %s %v", sub.Status, sub.AutoDownload)
@@ -189,13 +189,13 @@ func TestBatchHandlerResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch := savedPayload.Batch
-	if batch.Total != 2 || batch.Processed != 2 || batch.Submitted != 1 || batch.Waiting != 1 || row.Progress != 100 {
+	if batch.Total != 2 || batch.Processed != 2 || batch.Submitted != 0 || batch.Waiting != 2 || row.Progress != 100 {
 		t.Fatalf("unexpected tally after resume %+v progress=%d", batch, row.Progress)
 	}
 	if sub := f.client.Subscription.GetX(ctx, item1.ID); sub.Status != subscription.StatusWaiting {
 		t.Fatalf("item1 must remain untouched, got %s", sub.Status)
 	}
-	if sub := f.client.Subscription.GetX(ctx, item2.ID); sub.Status != subscription.StatusAdded || sub.Hash != "hash2" {
+	if sub := f.client.Subscription.GetX(ctx, item2.ID); sub.Status != subscription.StatusWaiting || sub.Hash != "hash2" {
 		t.Fatalf("item2 must be added, got %s %s", sub.Status, sub.Hash)
 	}
 }

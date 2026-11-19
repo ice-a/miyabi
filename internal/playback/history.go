@@ -91,27 +91,12 @@ func (service *Service) History(ctx context.Context, page int) (domain.WatchHist
 	for _, item := range movies {
 		byID[item.ID] = item
 	}
-	cloudFiles, err := service.database.File.Query().
-		Where(file.MovieIDIn(ids...), file.AccountIDNEQ(domain.LocalAccountID)).
-		Select(file.FieldMovieID).All(ctx)
-	if err != nil {
-		return result, fmt.Errorf("read history sources: %w", err)
-	}
-	cloud := make(map[int]bool, len(cloudFiles))
-	for _, item := range cloudFiles {
-		if item.MovieID != nil {
-			cloud[*item.MovieID] = true
-		}
-	}
 	for _, record := range records {
 		item, ok := byID[record.MovieID]
 		if !ok {
 			continue
 		}
 		source := ""
-		if cloud[record.MovieID] {
-			source = "115"
-		}
 		actors := make([]domain.Actor, 0, len(item.Edges.Actors))
 		for _, person := range item.Edges.Actors {
 			actors = append(actors, domain.Actor{Provider: person.Provider, ID: person.SourceID, Name: person.Name})

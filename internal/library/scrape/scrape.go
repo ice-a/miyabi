@@ -11,14 +11,13 @@ import (
 	"github.com/ppxb/miyabi/internal/database"
 	"github.com/ppxb/miyabi/internal/domain"
 	subtitlemeta "github.com/ppxb/miyabi/internal/domain/subtitle"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/file"
 	"github.com/ppxb/miyabi/internal/ent/movie"
 	"github.com/ppxb/miyabi/internal/export"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
@@ -68,14 +67,14 @@ const (
 )
 
 type dirCacheEntry struct {
-	files     []pan.File
+	files     []storage.File
 	expiresAt time.Time
 }
 
 // Service manages movie metadata scraping and artwork caching.
 type Service struct {
 	db            *ent.Client
-	drive         *drive.Drive
+	storage       *storage.Service
 	metadata      MetadataSource
 	images        *mediaimage.Cache
 	notifier      Notifier
@@ -103,10 +102,10 @@ type Dependencies struct {
 }
 
 // New installs dependencies before starting subtitle workers.
-func New(db *ent.Client, d *drive.Drive, metadata MetadataSource, images *mediaimage.Cache, notifier Notifier, deps Dependencies) *Service {
+func New(db *ent.Client, mounted *storage.Service, metadata MetadataSource, images *mediaimage.Cache, notifier Notifier, deps Dependencies) *Service {
 	service := &Service{
 		db:            db,
-		drive:         d,
+		storage:       mounted,
 		metadata:      metadata,
 		images:        images,
 		notifier:      notifier,
@@ -139,11 +138,11 @@ func (service *Service) Artwork(key string) ([]byte, error) {
 	return service.images.Read(key)
 }
 
-func (service *Service) begin(ctx context.Context, input MetadataPayload) (drive.Session, error) {
-	if service.drive == nil {
-		return nil, domain.E(domain.KindInvalid, "网盘服务未初始化", nil)
+func (service *Service) begin(ctx context.Context, input MetadataPayload) (storage.Session, error) {
+	if service.storage == nil {
+		return nil, domain.E(domain.KindInvalid, "媒体存储未初始化", nil)
 	}
-	return service.drive.OpenSource(ctx, input.Source)
+	return service.storage.OpenSource(ctx, input.Source)
 }
 
 // Scrape runs one recoverable movie workflow: metadata, artwork, then export.
@@ -191,7 +190,7 @@ func (service *Service) Scrape(ctx context.Context, job tasks.Job) error {
 	return nil
 }
 
-func (service *Service) prepareMetadata(ctx context.Context, sess drive.Session, taskID int, input *Payload) error {
+func (service *Service) prepareMetadata(ctx context.Context, sess storage.Session, taskID int, input *Payload) error {
 	record, err := service.db.Movie.Query().Where(movie.IDEQ(input.MovieID),
 		movie.HasFilesWith(database.LibraryFiles(input.Source))).Only(ctx)
 	if err != nil {
@@ -271,11 +270,11 @@ func (service *Service) Finished(ctx context.Context, tx *ent.Tx, job tasks.Job,
 type MovieDirectory struct {
 	ID       string
 	VideoIDs map[string]bool
-	Files    []pan.File
+	Files    []storage.File
 }
 
 // Directories returns all directories containing media files for the movie.
-func (service *Service) Directories(ctx context.Context, sess drive.Session, input MetadataPayload) ([]MovieDirectory, error) {
+func (service *Service) Directories(ctx context.Context, sess storage.Session, input MetadataPayload) ([]MovieDirectory, error) {
 	files, err := service.db.File.Query().Where(database.LibraryFiles(input.Source), file.MovieIDEQ(input.MovieID)).
 		Order(ent.Asc(file.FieldParentID), ent.Asc(file.FieldFileID)).All(ctx)
 	if err != nil {
@@ -317,7 +316,7 @@ func (service *Service) Directories(ctx context.Context, sess drive.Session, inp
 }
 
 // directoryEntries retrieves directory entries using a short-lived cache to avoid redundant pagination of large folders.
-func (service *Service) directoryEntries(ctx context.Context, sess drive.Session, dirID string) ([]pan.File, error) {
+func (service *Service) directoryEntries(ctx context.Context, sess storage.Session, dirID string) ([]storage.File, error) {
 	key := dirID
 	if src := sess.Source(); src.AccountID != "" {
 		key = src.AccountID + ":" + dirID
@@ -331,7 +330,7 @@ func (service *Service) directoryEntries(ctx context.Context, sess drive.Session
 		return slices.Clone(entry.files), nil
 	}
 
-	files, err := drive.DirectoryEntries(ctx, sess, dirID)
+	files, err := storage.DirectoryEntries(ctx, sess, dirID)
 	if err != nil {
 		return nil, err
 	}

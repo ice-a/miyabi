@@ -37,7 +37,7 @@ func (s *Service) RetryTask(ctx context.Context, id int) (domain.TaskInfo, error
 			}
 		}
 	} else {
-		sess, err := s.drive.OpenSource(ctx, input.Source)
+		sess, err := s.storage.OpenSource(ctx, input.Source)
 		if err != nil {
 			return domain.TaskInfo{}, err
 		}

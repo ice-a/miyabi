@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/encoding/traditionalchinese"
 )
 
-// maxSize bounds a subtitle download or 115 read; real subtitles are far smaller.
+// maxSize bounds a subtitle download or local read; real subtitles are far smaller.
 const maxSize = 10 << 20
 
 var (

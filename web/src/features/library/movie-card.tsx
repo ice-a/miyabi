@@ -45,7 +45,7 @@ export function LibraryMovieCard({
             movie={movie}
             titleTooltip={false}
             hideContent
-            state={movie.source === '115' ? <Badge variant="frosted">115</Badge> : undefined}
+            state={movie.source && movie.source !== 'local' ? <Badge variant="frosted">{movie.source}</Badge> : undefined}
             coverOverlay={
               <>
                 {movie.rating > 0 ? (

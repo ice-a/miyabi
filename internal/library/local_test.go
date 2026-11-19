@@ -60,7 +60,7 @@ func TestLocalScanWorkflow(t *testing.T) {
 		t.Fatalf("imported movies: %d", count)
 	}
 
-	// Local retries work without a 115 login and retain the original task ID.
+	// Local retries work without a cloud login and retain the original task ID.
 	store.Client.Task.UpdateOneID(info.ID).SetStatus(task.StatusFailed).ExecX(ctx)
 	retried, err := lib.RetryTask(ctx, info.ID)
 	if err != nil || retried.ID != info.ID || retried.Status != "queued" {

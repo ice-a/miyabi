@@ -9,12 +9,12 @@ import (
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/file"
 	"github.com/ppxb/miyabi/internal/ent/movie"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 // directoryPartCode requires an explicit directory number and a complete A, B,
 // ... sequence with a common filename stem. A letter alone is not a part marker.
-func directoryPartCode(directory string, videos []Video, sidecars []pan.File) string {
+func directoryPartCode(directory string, videos []Video, sidecars []storage.File) string {
 	code := codeid.Normalize(path.Base(directory))
 	if !codeid.Valid(code) {
 		return ""
@@ -59,13 +59,13 @@ func directoryPartCode(directory string, videos []Video, sidecars []pan.File) st
 // resolveDirectoryParts applies directory evidence only to unconfirmed names.
 // Existing manual or scraped identities can veto the whole group, so a genuine
 // letter variant cannot donate its siblings to a different movie.
-func resolveDirectoryParts(ctx context.Context, db *ent.Client, accountID, directory string, videos []Video, sidecars []pan.File) error {
+func resolveDirectoryParts(ctx context.Context, db *ent.Client, accountID, directory string, videos []Video, sidecars []storage.File) error {
 	code := directoryPartCode(directory, videos, sidecars)
 	if code == "" {
 		return nil
 	}
 	ids := make([]string, 0, len(videos))
-	byID := make(map[string]pan.File)
+	byID := make(map[string]storage.File)
 	for _, video := range videos {
 		if canIdentifyVideo(video.File) {
 			ids = append(ids, video.ID)
@@ -99,7 +99,7 @@ func resolveDirectoryParts(ctx context.Context, db *ent.Client, accountID, direc
 	return nil
 }
 
-func directoryPartConflict(code string, current pan.File, previous *ent.File) bool {
+func directoryPartConflict(code string, current storage.File, previous *ent.File) bool {
 	if previous == nil || previous.Edges.Movie == nil {
 		return false
 	}

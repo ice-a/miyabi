@@ -21,7 +21,8 @@ import (
 	mediaimage "github.com/ppxb/miyabi/internal/image"
 	"github.com/ppxb/miyabi/internal/library/scrape"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
@@ -127,13 +128,13 @@ func reconcileFixture(t *testing.T, completed, pending int) *scanRun {
 	err = ent.WithTx(t.Context(), store.Client, func(tx *ent.Tx) error {
 		for i := range completed + pending {
 			code := fmt.Sprintf("TEST-%03d", i)
-			video := pan.File{ID: fmt.Sprint(i), Name: code + ".mp4", ParentID: "folder", Size: 1024}
+			video := storage.File{ID: fmt.Sprint(i), Name: code + ".mp4", ParentID: "folder", Size: 1024}
 			builder := tx.Movie.Create().SetCode(code)
 			if i < completed {
 				builder.SetMetadata(&nfo.Movie{Code: code}).SetScrapeStatus(movie.ScrapeStatusDone).SetPoster(artwork.Poster).SetCover(artwork.Thumbnail).
 					SetFanarts([]string{artwork.Fanart}).SetMetadataSnapshot(&domain.MetadataSnapshot{
 					AccountID: payload.Source.AccountID, DirectoryID: payload.Source.Directory.ID,
-					Videos: scrape.VideoFingerprint([]pan.File{video}), PosterVersion: mediaimage.PosterVersion,
+					Videos: scrape.VideoFingerprint([]storage.File{video}), PosterVersion: mediaimage.PosterVersion,
 				})
 			}
 			film := builder.SaveX(t.Context())
@@ -321,13 +322,13 @@ func TestReconcileSnapshotUsesFilesRemainingAfterScopedCleanup(t *testing.T) {
 			if targeted {
 				run.payload.TargetID, run.payload.TargetPath = "folder", "/Movies/Target"
 			}
-			retained := []pan.File{{ID: "0", Name: "TEST-000.mp4", ParentID: "folder", Size: 1024}}
+			retained := []storage.File{{ID: "0", Name: "TEST-000.mp4", ParentID: "folder", Size: 1024}}
 			for _, entry := range []struct{ id, path, account string }{
 				{"stale", "/Movies/Target/old.mp4", "account"},
 				{"outside", "/Movies/Other/part.mp4", "account"},
 				{"other-account", "/Movies/Other/part.mp4", "other"},
 			} {
-				video := pan.File{ID: entry.id, Name: entry.id + ".mp4", ParentID: "folder", Size: 1024}
+				video := storage.File{ID: entry.id, Name: entry.id + ".mp4", ParentID: "folder", Size: 1024}
 				run.scanner.db.File.Create().SetFileID(video.ID).SetName(video.Name).SetParentID(video.ParentID).SetSize(video.Size).
 					SetAccountID(entry.account).SetRootID("root").SetPath(entry.path).SetScanID("old").SetMovie(film).ExecX(ctx)
 				if targeted && entry.id == "outside" {
@@ -383,7 +384,7 @@ func TestReconcileRetriesReassignedExportCleanup(t *testing.T) {
 	}
 	for _, code := range run.payload.ObsoleteCodes {
 		if _, err := export.WriteMedia(export.Config{EmbyDir: run.scanner.exportMgr.Config().EmbyDir, PublicURL: "http://localhost", STRMToken: ""}, code,
-			nfo.Movie{Code: code}, []pan.File{{ID: code, Name: code + ".mp4"}}, nil, nil); err != nil {
+			nfo.Movie{Code: code}, []storage.File{{ID: code, Name: code + ".mp4"}}, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -429,7 +430,7 @@ func TestReassignedExportCleanupPreservesRecreatedMovie(t *testing.T) {
 	run.scanner.db.Movie.Create().SetCode(code).ExecX(ctx)
 	cfg := run.scanner.exportMgr.Config()
 	if _, err := export.WriteMedia(export.Config{EmbyDir: cfg.EmbyDir, PublicURL: cfg.PublicURL, STRMToken: ""}, code,
-		nfo.Movie{Code: code}, []pan.File{{ID: "retained", Name: code + ".mp4"}}, nil, nil); err != nil {
+		nfo.Movie{Code: code}, []storage.File{{ID: "retained", Name: code + ".mp4"}}, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := run.reconcile(ctx); err != nil {

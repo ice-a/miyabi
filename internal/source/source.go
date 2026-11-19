@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -18,12 +19,13 @@ const settingKey = "sources"
 type Kind string
 
 const (
-	KindLocal  Kind = "local"
-	Kind115    Kind = "115"
-	KindPikPak Kind = "pikpak"
+	KindLocal Kind = "local"
+	// KindLegacyPan is the retired cloud drive kind. Saved configurations that
+	// still reference it are reported as unsupported instead of being loaded.
+	KindLegacyPan Kind = "115"
 )
 
-// Source is a configurable storage location (a local folder or a cloud drive).
+// Source is a configurable storage location.
 type Source struct {
 	ID      string            `json:"id"`
 	Kind    Kind              `json:"kind"`
@@ -36,19 +38,12 @@ type Source struct {
 type Service struct {
 	client      *ent.Client
 	onLocalScan func(context.Context, string, bool) error
-	onScan      func(context.Context, domain.LibrarySource) error
-	mounts      MountProvider
 }
 
 // LocalTarget is an enabled local source directory and its metadata mode.
 type LocalTarget struct {
 	Path         string
 	MetadataOnly bool
-}
-
-// MountProvider resolves a 115 account's mounted directory.
-type MountProvider interface {
-	Mount(context.Context, string) (domain.LibrarySource, bool)
 }
 
 func New(client *ent.Client) *Service {
@@ -58,16 +53,6 @@ func New(client *ent.Client) *Service {
 // SetLocalScanHandler lets the composition root enqueue scans after sources change.
 func (s *Service) SetLocalScanHandler(handler func(context.Context, string, bool) error) {
 	s.onLocalScan = handler
-}
-
-// SetScanHandler enqueues scans for configured cloud sources.
-func (s *Service) SetScanHandler(handler func(context.Context, domain.LibrarySource) error) {
-	s.onScan = handler
-}
-
-// SetMountProvider lets the service resolve 115 account mounts.
-func (s *Service) SetMountProvider(provider MountProvider) {
-	s.mounts = provider
 }
 
 func (s *Service) List(ctx context.Context) ([]Source, error) {
@@ -102,46 +87,17 @@ func (s *Service) Replace(ctx context.Context, sources []Source) ([]Source, erro
 
 func (s *Service) triggerScans(ctx context.Context, sources []Source) {
 	for _, src := range sources {
-		if !src.Enabled {
+		if !src.Enabled || src.Kind != KindLocal || s.onLocalScan == nil {
 			continue
 		}
-		switch src.Kind {
-		case KindLocal:
-			if path := strings.TrimSpace(src.Config["path"]); path != "" && s.onLocalScan != nil {
-				_ = s.onLocalScan(ctx, path, localMetadataOnly(src))
-			}
-		case Kind115:
-			accountID := strings.TrimSpace(src.Config["account_id"])
-			if accountID == "" || s.mounts == nil {
-				continue
-			}
-			if mount, ok := s.mounts.Mount(ctx, accountID); ok && s.onScan != nil {
-				_ = s.onScan(ctx, mount)
-			}
-		}
-	}
-}
-
-// LibrarySources returns the enabled 115 sources that have a mounted directory.
-func (s *Service) LibrarySources(ctx context.Context) ([]domain.LibrarySource, error) {
-	sources, err := s.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]domain.LibrarySource, 0)
-	for _, src := range sources {
-		if src.Kind != Kind115 || !src.Enabled || s.mounts == nil {
+		path := strings.TrimSpace(src.Config["path"])
+		if path == "" {
 			continue
 		}
-		accountID := strings.TrimSpace(src.Config["account_id"])
-		if accountID == "" {
-			continue
-		}
-		if mount, ok := s.mounts.Mount(ctx, accountID); ok {
-			result = append(result, mount)
+		if err := s.onLocalScan(ctx, path, localMetadataOnly(src)); err != nil {
+			slog.WarnContext(ctx, "failed to enqueue local scan", "source", src.Name, "path", path, "error", err)
 		}
 	}
-	return result, nil
 }
 
 // LocalTargets returns the enabled local source directories with their mode.
@@ -196,8 +152,10 @@ func validate(src Source) error {
 		if !info.IsDir() {
 			return domain.E(domain.KindInvalid, fmt.Sprintf("路径不是目录：%s", path), nil)
 		}
-	case Kind115, KindPikPak:
-		// Cloud sources are authenticated separately; nothing to validate here.
+	case KindLegacyPan:
+		// The cloud drive integration was removed; keeping the stored entry
+		// readable lets users replace it with a local source explicitly.
+		return domain.E(domain.KindInvalid, "115 存储源已下线，请改用本地目录存储源", nil)
 	default:
 		return domain.E(domain.KindInvalid, "未知的存储源类型", nil)
 	}

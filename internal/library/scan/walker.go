@@ -12,19 +12,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ppxb/miyabi/internal/domain"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/file"
 	"github.com/ppxb/miyabi/internal/ent/movie"
 	"github.com/ppxb/miyabi/internal/export"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
-// DefaultPacing provides ~2-3 req/s with 150ms jitter for 115 cold-start traversal.
+// DefaultPacing yields briefly between directory listings so a cold walk of a
+// large local or NAS directory does not monopolize the disk while playback or
+// scrapes are running.
 func DefaultPacing(ctx context.Context) error {
-	delay := 350*time.Millisecond + time.Duration(rand.N(150))*time.Millisecond
+	delay := 2*time.Millisecond + time.Duration(rand.N(3))*time.Millisecond
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -35,7 +36,7 @@ func DefaultPacing(ctx context.Context) error {
 
 // Scanner encapsulates the dependencies required to execute library scan jobs.
 type Scanner struct {
-	driveSvc  *drive.Drive
+	storage   *storage.Service
 	db        *ent.Client
 	images    *mediaimage.Cache
 	tasksSvc  *tasks.Service
@@ -45,12 +46,12 @@ type Scanner struct {
 }
 
 // New creates a new Scanner with the provided dependencies.
-func New(driveSvc *drive.Drive, db *ent.Client, images *mediaimage.Cache, tasksSvc *tasks.Service, exportMgr *export.Manager, pace func(context.Context) error) *Scanner {
+func New(mounted *storage.Service, db *ent.Client, images *mediaimage.Cache, tasksSvc *tasks.Service, exportMgr *export.Manager, pace func(context.Context) error) *Scanner {
 	if pace == nil {
 		pace = DefaultPacing
 	}
 	return &Scanner{
-		driveSvc:  driveSvc,
+		storage:   mounted,
 		db:        db,
 		images:    images,
 		tasksSvc:  tasksSvc,
@@ -78,7 +79,7 @@ func (s *Scanner) Run(ctx context.Context, job tasks.Job) error {
 	if payload.Scan.Stage == "done" {
 		return nil
 	}
-	sess, err := s.driveSvc.OpenSource(ctx, payload.Source)
+	sess, err := s.storage.OpenSource(ctx, payload.Source)
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func (s *Scanner) Run(ctx context.Context, job tasks.Job) error {
 // scanRun holds mutable state for one job; none of it is shared across runs.
 type scanRun struct {
 	scanner     *Scanner
-	session     drive.Session
+	session     storage.Session
 	taskID      int
 	payload     *domain.ScanPayload
 	directories []Directory
@@ -160,20 +161,20 @@ func (r *scanRun) reconcile(ctx context.Context) error {
 }
 
 func (r *scanRun) runTarget(ctx context.Context, isResume bool) error {
-	info, err := drive.SourceInfo(ctx, r.session, r.payload.TargetID)
+	info, err := storage.SourceInfo(ctx, r.session, r.payload.TargetID)
 	if err != nil {
 		return fmt.Errorf("read completed download: %w", err)
 	}
 	if r.payload.OfflineTaskID != 0 && info.ID == r.payload.Source.Directory.ID {
-		return domain.E(domain.KindConflict, "115 返回的是媒体根目录，无法确定本次下载的影片文件", nil)
+		return domain.E(domain.KindConflict, "扫描目标指向媒体根目录，无法确定本次要索引的影片文件", nil)
 	}
-	r.payload.TargetPath = drive.FilePath(info.Path, info.Name)
+	r.payload.TargetPath = info.Path
 	r.payload.TargetFile = !info.IsDirectory
 	if r.payload.TargetFile {
 		if !domain.IsVideo(info.Name) {
-			return domain.E(domain.KindInvalid, "115 下载结果不是视频文件", nil)
+			return domain.E(domain.KindInvalid, "扫描目标不是视频文件", nil)
 		}
-		videos := []Video{IdentifyVideo(info.File)}
+		videos := []Video{IdentifyVideo(info)}
 		if r.payload.OfflineTaskID != 0 {
 			videos[0].Code = r.payload.Code
 		}
@@ -252,23 +253,23 @@ func (r *scanRun) walk(ctx context.Context, start Directory, isResume bool) erro
 
 func (r *scanRun) indexDirectory(ctx context.Context, directory Directory) error {
 	var directoryVideos []Video
-	var sidecars []pan.File
+	var sidecars []storage.File
 
-	err := drive.WalkFilePages(ctx, func(offset int) (pan.FilePage, error) {
+	err := storage.WalkPages(ctx, func(offset int) (storage.FilePage, error) {
 		if r.scanner.pace != nil {
 			if err := r.scanner.pace(ctx); err != nil {
-				return pan.FilePage{}, err
+				return storage.FilePage{}, err
 			}
 		}
 		page, err := r.session.List(ctx, directory.ID, offset)
 		if err != nil {
-			return pan.FilePage{}, err
+			return storage.FilePage{}, err
 		}
-		if !slices.ContainsFunc(page.Path, func(d pan.Directory) bool { return d.ID == r.payload.Source.Directory.ID }) {
-			return pan.FilePage{}, domain.E(domain.KindConflict, "该文件夹已移出媒体目录，请重新扫描", nil)
+		if !slices.ContainsFunc(page.Path, func(d storage.Directory) bool { return d.ID == r.payload.Source.Directory.ID }) {
+			return storage.FilePage{}, domain.E(domain.KindConflict, "该文件夹已移出媒体目录，请重新扫描", nil)
 		}
 		return page, nil
-	}, func(page pan.FilePage) (bool, error) {
+	}, func(page storage.FilePage) (bool, error) {
 		for _, entry := range page.Files {
 			if r.seen[entry.ID] {
 				continue

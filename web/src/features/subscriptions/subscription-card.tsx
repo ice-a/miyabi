@@ -19,7 +19,7 @@ const dateTimeFormat = new Intl.DateTimeFormat('zh-CN', {
 
 const statusLabels: Record<SubscriptionItem['status'], string> = {
   waiting: '等待磁力',
-  added: '已加入 115',
+  added: '已匹配磁力',
   stale: '长期无源',
   active: '生效中',
   paused: '已暂停'
@@ -133,7 +133,7 @@ function statusVariant(status: SubscriptionItem['status']) {
 }
 
 function describeSchedule(item: SubscriptionItem) {
-  if (item.status === 'added') return '已自动加入 115'
+  if (item.status === 'added') return '已自动匹配磁力'
   if (item.status === 'stale') return '发行 30 天后仍无磁力'
   if (item.hash && !item.auto_download) return '已有磁力，等待入库'
   if (item.next_check_at) {

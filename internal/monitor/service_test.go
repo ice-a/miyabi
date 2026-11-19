@@ -20,6 +20,7 @@ type mockDiscoverer struct {
 	actorMovies  map[string][]domain.Movie
 	browseErr    error
 	summaryCalls int
+	magnetCalls  int
 }
 
 func newMockDiscoverer() *mockDiscoverer {
@@ -36,6 +37,7 @@ func (m *mockDiscoverer) MovieSummary(_ context.Context, movieID string) (domain
 func (m *mockDiscoverer) CatalogueMagnets(_ context.Context, movieID string) ([]domain.Magnet, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.magnetCalls++
 	return m.magnets[movieID], m.magnetsErr
 }
 
@@ -48,24 +50,9 @@ func (m *mockDiscoverer) BrowseMovies(_ context.Context, options domain.BrowseOp
 	return m.actorMovies[options.EntityID], nil
 }
 
-type submission struct{ MovieID, Hash string }
-
-type mockOfflineAdder struct {
-	mu          sync.Mutex
-	submissions []submission
-}
-
-func (m *mockOfflineAdder) Add(_ context.Context, movieID, hash string) (domain.OfflineSubmission, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.submissions = append(m.submissions, submission{movieID, hash})
-	return domain.OfflineSubmission{TaskID: len(m.submissions), Code: movieID, JavDBID: movieID, Hash: hash, Status: "running"}, nil
-}
-
 type fixture struct {
 	service  *Service
 	discover *mockDiscoverer
-	offline  *mockOfflineAdder
 	tasks    *tasks.Service
 	client   *ent.Client
 }
@@ -77,9 +64,9 @@ func newFixture(t *testing.T) fixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	discover, offline := newMockDiscoverer(), &mockOfflineAdder{}
+	discover := newMockDiscoverer()
 	taskSvc := tasks.NewService(store.Client, tasks.NewRegistry())
-	return fixture{New(store.Client, discover, offline, taskSvc), discover, offline, taskSvc, store.Client}
+	return fixture{New(store.Client, discover, taskSvc), discover, taskSvc, store.Client}
 }
 
 func TestMovieSubscriptionLifecycle(t *testing.T) {
@@ -113,8 +100,11 @@ func TestReAddingFinishedSubscriptionOnlyResetsForUsers(t *testing.T) {
 	f, ctx := newFixture(t), t.Context()
 	item, _ := f.service.AddMovie(ctx, "m1", AddMovieOptions{})
 	f.discover.magnets["m1"] = []domain.Magnet{{Hash: "h1", Name: "MOCK-m1", HasSubtitle: true}}
-	if added, err := f.service.EnqueueSingle(ctx, item.ID); err != nil || added.Status != subscription.StatusAdded {
-		t.Fatalf("EnqueueSingle: %#v %v", added, err)
+	if picked, err := f.service.EnqueueSingle(ctx, item.ID); err != nil || picked.Hash != "h1" {
+		t.Fatalf("EnqueueSingle: %#v %v", picked, err)
+	}
+	if _, err := f.client.Subscription.UpdateOneID(item.ID).SetStatus(subscription.StatusAdded).Save(ctx); err != nil {
+		t.Fatal(err)
 	}
 	spawned, err := f.service.addMovie(ctx, domain.MovieSummary{ID: "m1"}, AddMovieOptions{OriginID: ptr(99)})
 	if err != nil || spawned.ID != item.ID || spawned.Status != subscription.StatusAdded {
@@ -124,8 +114,8 @@ func TestReAddingFinishedSubscriptionOnlyResetsForUsers(t *testing.T) {
 	if err != nil || rearmed.Status != subscription.StatusWaiting || rearmed.Hash != "" {
 		t.Fatalf("a user re-add must re-arm: %#v %v", rearmed, err)
 	}
-	if len(f.offline.submissions) != 1 {
-		t.Fatalf("expected exactly one 115 submission, got %d", len(f.offline.submissions))
+	if got := f.client.Subscription.Query().Where(subscription.HashNEQ("")).CountX(ctx); got != 0 {
+		t.Fatalf("expected the re-armed subscription to drop its hash, got %d", got)
 	}
 }
 

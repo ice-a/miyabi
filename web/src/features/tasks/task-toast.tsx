@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { LoaderCircleIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
-import type { OfflineSubmission } from '@/api/offline'
 import {
   isScanTask,
   isTaskActive,
@@ -11,12 +10,10 @@ import {
   type ScanTask,
   type Task
 } from '@/api/tasks'
-import { isOfflineTaskActive } from '@/api/offline'
 import { scanStage, scanStatus } from './scan-status'
 import { TaskProgress } from './task-progress'
 import { TaskToastActions } from './task-toast-actions'
-import { batchToastID, offlineToastID, scanToastID } from './task-notification-diff'
-import { downloadStatus } from './download-status'
+import { batchToastID, scanToastID } from './task-notification-diff'
 
 type TaskToastOptions = {
   waiting?: boolean
@@ -27,8 +24,7 @@ function taskToastOptions(
   id: string,
   active: boolean,
   options: TaskToastOptions = {},
-  retryTaskID?: number,
-  cancelTaskID?: number
+  retryTaskID?: number
 ) {
   return {
     id,
@@ -37,7 +33,7 @@ function taskToastOptions(
     closeButton: false,
     icon: undefined,
     onDismiss: options.onDismiss,
-    action: <TaskToastActions id={id} retryTaskID={retryTaskID} cancelTaskID={cancelTaskID} />
+    action: <TaskToastActions id={id} retryTaskID={retryTaskID} />
   }
 }
 
@@ -105,80 +101,6 @@ export function notifyScanTask(task: ScanTask, options: TaskToastOptions = {}) {
   }
 }
 
-export function notifyOfflineTask(
-  task: OfflineSubmission,
-  options: TaskToastOptions & { scan?: ScanTask } = {}
-) {
-  const active = isOfflineTaskActive(task)
-  const id = offlineToastID(task.task_id)
-  const props = taskToastOptions(
-    id,
-    active,
-    options,
-    options.scan?.can_retry ? options.scan.id : undefined,
-    task.can_cancel ? task.task_id : undefined
-  )
-  if (active) {
-    const scan = options.scan
-    toast.info(task.code, {
-      ...props,
-      icon:
-        options.waiting || (task.phase !== 'downloading' && scan?.paused) ? undefined : (
-          <LoaderCircleIcon className="size-4 animate-spin" />
-        ),
-      description: options.waiting ? (
-        '等待进度同步'
-      ) : (
-        <TaskProgress
-          offline
-          hint={task.error ?? task.switch_reason}
-          label={
-            task.phase === 'downloading'
-              ? downloadStatus(task)
-              : scan
-                ? scanStatus(scan)
-                : undefined
-          }
-          current={
-            task.phase === 'downloading'
-              ? 'downloading'
-              : scan
-                ? scanStage(scan)
-                : task.scan_task_id
-                  ? 'queued'
-                  : 'locating'
-          }
-          progress={
-            task.phase === 'downloading'
-              ? task.progress
-              : scan && scan.scan.metadata_total > 0
-                ? scan.progress
-                : undefined
-          }
-        />
-      )
-    })
-  } else if (task.status === 'cancelled') {
-    toast.info(task.code, { ...props, description: '已取消下载' })
-  } else if (task.phase === 'in_library') {
-    const notify = task.error ? toast.warning : toast.success
-    notify(task.code, {
-      ...props,
-      description: task.error ? `元数据处理失败：${task.error}` : '下载与入库处理已完成'
-    })
-  } else if (task.error || task.status === 'failed') {
-    toast.error(task.code, { ...props, description: task.error ?? '处理失败，请重试。' })
-  } else {
-    toast.warning(task.code, {
-      ...props,
-      description:
-        task.phase === 'downloaded'
-          ? '视频已下载，但尚未识别为对应影片，请在 115 检查文件名和大小后同步媒体库。'
-          : '当前媒体目录内未找到该任务的视频文件。'
-    })
-  }
-}
-
 export function notifyBatchTask(task: BatchTask, options: TaskToastOptions = {}) {
   const active = isTaskActive(task)
   const props = taskToastOptions(
@@ -188,7 +110,7 @@ export function notifyBatchTask(task: BatchTask, options: TaskToastOptions = {})
     task.can_retry ? task.id : undefined
   )
   const { total, processed, submitted, waiting, failed, failures } = task.batch
-  const summary = `已加入 115 ${submitted} 部 · 等待磁力 ${waiting} 部${failed > 0 ? ` · 失败 ${failed} 部` : ''}`
+  const summary = `命中磁力 ${submitted} 部 · 等待磁力 ${waiting} 部${failed > 0 ? ` · 失败 ${failed} 部` : ''}`
   if (active) {
     toast.info('正在批量入库', {
       ...props,

@@ -16,6 +16,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	// maxResponseBytes bounds how much of a single upstream page is buffered.
+	maxResponseBytes = 16 << 20
+	// requestRate and requestBurst throttle one provider's pages without
+	// serialising unrelated providers.
+	requestRate  = 2
+	requestBurst = 2
+)
+
 type client struct {
 	http          *http.Client
 	limiter       *rate.Limiter
@@ -65,7 +74,7 @@ func (c *client) failed(err error) error {
 }
 
 func newClient(proxy *netx.ProxyManager, base, cookie string, hosts ...string) client {
-	return client{http: netx.NewSafeDownloadClient(proxy, 20*time.Second), limiter: rate.NewLimiter(2, 2), base: base, cookie: cookie, hosts: hosts}
+	return client{http: netx.NewSafeDownloadClient(proxy, 20*time.Second), limiter: rate.NewLimiter(requestRate, requestBurst), base: base, cookie: cookie, hosts: hosts}
 }
 
 func (c *client) get(ctx context.Context, target string) ([]byte, error) {
@@ -92,12 +101,12 @@ func (c *client) get(ctx context.Context, target string) ([]byte, error) {
 	if response.StatusCode != http.StatusOK {
 		return nil, c.failed(&domain.HTTPError{Source: "metadata", StatusCode: response.StatusCode, RetryAfter: domain.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())})
 	}
-	body, err := io.ReadAll(io.LimitReader(response.Body, 16<<20+1))
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, c.failed(err)
 	}
-	if len(body) > 16<<20 {
-		return nil, fmt.Errorf("response exceeds 16 MiB")
+	if len(body) > maxResponseBytes {
+		return nil, fmt.Errorf("response exceeds %d MiB", maxResponseBytes>>20)
 	}
 	return body, nil
 }

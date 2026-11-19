@@ -14,7 +14,6 @@ import { notifyUnauthorized } from '@/api/client'
 import { movieStateKeys } from '@/api/movie-states'
 import { cancelQueryRefresh, refreshQueries } from '@/api/query-refresh'
 import { libraryKeys } from '@/api/library'
-import { offlineKeys } from '@/api/offline'
 import { subscriptionKeys } from '@/api/subscriptions'
 import { taskKeys, type Task, type TaskRevisions } from '@/api/tasks'
 
@@ -123,8 +122,8 @@ export function TaskEventsProvider({ children }: PropsWithChildren) {
       const keys: QueryKey[] = []
       const libraryChanged = revisions?.library !== next.library
       if (libraryChanged) keys.push(libraryKeys.all)
-      if (libraryChanged || revisions?.offline !== next.offline) {
-        keys.push(movieStateKeys.all, offlineKeys.all)
+      if (libraryChanged) {
+        keys.push(movieStateKeys.all)
       }
       if (revisions?.monitor !== next.monitor) keys.push(subscriptionKeys.all)
       revisions = next

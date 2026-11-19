@@ -48,6 +48,19 @@ func TestMergeKeepsJavDBEntitiesAndAllSourceArtwork(t *testing.T) {
 	}
 }
 
+// needsSupplement mirrors the completeness bar for merged metadata: optional
+// series, director and rating may legitimately be absent, the rest must be set.
+func needsSupplement(result domain.MovieMetadata) bool {
+	m := result.Detail
+	cover, preview := false, false
+	for _, candidate := range result.Images {
+		cover = cover || candidate.Role == "cover" || candidate.Role == "poster"
+		preview = preview || candidate.Role == "preview"
+	}
+	return m.Title == "" || m.ReleaseDate == "" || m.Duration == 0 ||
+		len(m.Actors) == 0 || m.Maker == nil || len(m.Tags) == 0 || !cover || !preview
+}
+
 func TestMergeSupplementsMissingJavDBFieldsAndPreviews(t *testing.T) {
 	catalogue := fixture("javdb", "ABP-123", "Catalogue title")
 	official := completeFixture("fanza", "ABP-123")

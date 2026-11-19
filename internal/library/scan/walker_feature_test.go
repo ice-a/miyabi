@@ -23,7 +23,9 @@ func TestScannerDefaultPacingAndCancellation(t *testing.T) {
 		if err := scanner.pace(ctx); !errors.Is(err, context.Canceled) {
 			t.Fatalf("pacing cancellation: %v", err)
 		}
-		deadline, stop := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		// The default pacing delay is at least 2ms, so a 1ms deadline must
+		// always expire while the pace is still waiting.
+		deadline, stop := context.WithTimeout(t.Context(), 1*time.Millisecond)
 		defer stop()
 		if err := scanner.pace(deadline); !errors.Is(err, context.DeadlineExceeded) {
 			t.Fatalf("pacing deadline: %v", err)

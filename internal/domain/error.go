@@ -90,6 +90,9 @@ func (e *Error) Unwrap() error {
 
 func (e *Error) DomainKind() Kind { return e.Kind }
 
+// UnexpectedMessage is the safe fallback text for errors without a public message.
+const UnexpectedMessage = "内部服务错误"
+
 // PublicMessage returns the user-facing message safe to be exposed via API.
 func (e *Error) PublicMessage() string {
 	if e == nil {
@@ -97,7 +100,7 @@ func (e *Error) PublicMessage() string {
 	}
 	switch e.Kind {
 	case KindUnexpected:
-		return "内部服务错误"
+		return UnexpectedMessage
 	}
 	if e.Message != "" {
 		return e.Message
@@ -120,7 +123,7 @@ func (e *Error) PublicMessage() string {
 	case KindCanceled:
 		return "请求已取消"
 	default:
-		return "内部服务错误"
+		return UnexpectedMessage
 	}
 }
 
@@ -148,7 +151,7 @@ func PublicMessage(err error) string {
 	}
 	switch KindOf(err) {
 	case KindUnexpected:
-		return "内部服务错误"
+		return UnexpectedMessage
 	default:
 		return err.Error()
 	}

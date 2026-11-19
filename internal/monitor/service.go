@@ -93,23 +93,17 @@ type Discoverer interface {
 	BrowseMovies(ctx context.Context, options domain.BrowseOptions) ([]domain.Movie, error)
 }
 
-type OfflineAdder interface {
-	Add(ctx context.Context, movieID string, hash string) (domain.OfflineSubmission, error)
-}
-
 // Service manages movie and actor subscriptions: it polls JavDB on the daily
-// schedule, picks magnets by preference, submits them to 115, and runs the
-// queued batch ingestion task.
+// schedule, picks magnets by preference, and runs the queued batch lookup task.
 type Service struct {
 	database *ent.Client
 	discover Discoverer
-	offline  OfflineAdder
 	tasks    *tasks.Service
 	wake     chan struct{}
 }
 
-func New(database *ent.Client, discover Discoverer, offline OfflineAdder, taskSvc *tasks.Service) *Service {
-	return &Service{database: database, discover: discover, offline: offline, tasks: taskSvc, wake: make(chan struct{}, 1)}
+func New(database *ent.Client, discover Discoverer, taskSvc *tasks.Service) *Service {
+	return &Service{database: database, discover: discover, tasks: taskSvc, wake: make(chan struct{}, 1)}
 }
 
 // Pending signals when a subscription wants an immediate check.

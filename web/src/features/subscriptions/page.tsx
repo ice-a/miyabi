@@ -113,7 +113,7 @@ export function SubscriptionsPage({
         setConfirmMode(null)
         leaveSelection()
         toast.success(`已创建 ${count} 部影片的入库任务`, {
-          description: '按磁力偏好逐部加入 115，进度见任务通知。'
+          description: '按磁力偏好逐部匹配磁力，进度见任务通知。'
         })
       }
     })
@@ -121,7 +121,7 @@ export function SubscriptionsPage({
 
   return (
     <AppPage>
-      <PageHeader title="关注" description="追踪影片磁力与演员新作，出现资源后加入 115">
+      <PageHeader title="关注" description="追踪影片磁力与演员新作，出现资源后记录磁力">
         {selecting ? (
           <>
             <Button
@@ -249,8 +249,8 @@ export function SubscriptionsPage({
             <DialogTitle>{confirmMode === 'all' ? '一键入库' : '入库选中影片'}</DialogTitle>
             <DialogDescription>
               {confirmMode === 'all'
-                ? `为 ${pendingCount} 部等待磁力的影片创建入库任务？任务按磁力偏好逐部加入 115，每部之间随机间隔 1.5 到 3 秒；没有合适磁力的影片保持等待并开启自动入库。`
-                : `为选中的 ${selectedIDs.length} 部影片创建入库任务？任务按磁力偏好逐部加入 115，每部之间随机间隔 1.5 到 3 秒。`}
+                ? `为 ${pendingCount} 部等待磁力的影片创建入库任务？任务按磁力偏好逐部匹配磁力，每部之间随机间隔 1.5 到 3 秒；没有合适磁力的影片保持等待。`
+                : `为选中的 ${selectedIDs.length} 部影片创建入库任务？任务按磁力偏好逐部匹配磁力，每部之间随机间隔 1.5 到 3 秒。`}
             </DialogDescription>
           </DialogHeader>
           {batch.error ? <InlineError>{describeApiError(batch.error)}</InlineError> : null}

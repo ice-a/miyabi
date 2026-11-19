@@ -6,7 +6,8 @@ import (
 	"github.com/ppxb/miyabi/internal/database"
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/export"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
@@ -49,7 +50,7 @@ func TestScanNotificationsFollowTransactionCommit(t *testing.T) {
 				defer tx.Rollback()
 				run := scanRun{scanner: &Scanner{tasksSvc: svc}, taskID: job.ID, payload: &payload}
 				if operation == "page" {
-					err = run.processPageTx(ctx, tx, "/Movies", []Video{{File: pan.File{ID: "new", Name: "new.mp4", Size: 1}}}, nil)
+					err = run.processPageTx(ctx, tx, "/Movies", []Video{{File: storage.File{ID: "new", Name: "new.mp4", Size: 1}}}, nil)
 				} else {
 					err = run.reconcileTx(ctx, tx, export.Config{}, nil)
 				}

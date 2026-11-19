@@ -29,7 +29,7 @@ func (s *Scanner) RescrapeMovie(ctx context.Context, id int, code string) (*ent.
 	if err != nil {
 		return nil, err
 	}
-	sess, err := s.driveSvc.OpenSource(ctx, source)
+	sess, err := s.storage.OpenSource(ctx, source)
 	if err != nil {
 		return nil, err
 	}
@@ -132,23 +132,20 @@ func (s *Scanner) RescrapeMovie(ctx context.Context, id int, code string) (*ent.
 	return parent, nil
 }
 
-// movieSource resolves the 115 source whose current mount holds the movie's files.
+// movieSource resolves the source whose current mount holds the movie's files.
 func (s *Scanner) movieSource(ctx context.Context, id int) (domain.LibrarySource, error) {
 	record, err := s.db.File.Query().
-		Where(file.MovieIDEQ(id), file.AccountIDNEQ(domain.LocalAccountID)).
-		Select(file.FieldAccountID).First(ctx)
+		Where(file.MovieIDEQ(id)).
+		Select(file.FieldAccountID, file.FieldRootID).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.LibrarySource{}, domain.E(domain.KindNotFound, "当前挂载目录中未找到该影片的媒体文件", nil)
 		}
 		return domain.LibrarySource{}, err
 	}
-	if primary := s.driveSvc.Source(); primary != nil && primary.AccountID == record.AccountID {
-		return *primary, nil
-	}
-	source, ok := s.driveSvc.Mount(ctx, record.AccountID)
-	if !ok {
+	primary := s.storage.Source()
+	if primary == nil || primary.AccountID != record.AccountID || primary.Directory.ID != record.RootID {
 		return domain.LibrarySource{}, domain.E(domain.KindNotFound, "当前挂载目录中未找到该影片的媒体文件", nil)
 	}
-	return source, nil
+	return *primary, nil
 }

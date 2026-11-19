@@ -6,13 +6,14 @@ import (
 
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/ent/movie"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func partVideos(names ...string) []Video {
 	videos := make([]Video, len(names))
 	for i, name := range names {
-		videos[i] = IdentifyVideo(pan.File{ID: fmt.Sprint(i), Name: name, Size: domain.MinVideoSize, SHA1: "hash"})
+		videos[i] = IdentifyVideo(storage.File{ID: fmt.Sprint(i), Name: name, Size: domain.MinVideoSize, SHA1: "hash"})
 	}
 	return videos
 }
@@ -48,9 +49,9 @@ func TestDirectoryPartCode(t *testing.T) {
 		{"conflicting sidecar", "ONSD-340", []string{"A.mp4", "B.mp4"}, []string{"FJIN-106.nfo"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var sidecars []pan.File
+			var sidecars []storage.File
 			for _, name := range tc.sidecars {
-				sidecars = append(sidecars, pan.File{Name: name})
+				sidecars = append(sidecars, storage.File{Name: name})
 			}
 			if got := directoryPartCode("/Movies/"+tc.directory, partVideos(tc.files...), sidecars); got != tc.want {
 				t.Fatalf("directoryPartCode = %q, want %q", got, tc.want)

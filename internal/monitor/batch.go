@@ -15,16 +15,16 @@ import (
 )
 
 const (
-	// Batches pause a random 1.5 to 3 seconds between 115 submissions to stay
-	// under its rate limits.
+	// Batches pause a random 1.5 to 3 seconds between upstream magnet lookups
+	// to stay under the catalogue rate limits.
 	batchGapMin       = 1500 * time.Millisecond
 	batchGapJitter    = 1500 * time.Millisecond
 	batchFailureLimit = 20
 )
 
-// EnqueueSingle ingests one movie subscription: pick the best magnet by
-// preference and submit it to 115. Without a qualifying magnet the
-// subscription keeps waiting with auto-download switched on.
+// EnqueueSingle checks one movie subscription: pick the best magnet by
+// preference and remember it on the subscription. Without a qualifying magnet
+// the subscription keeps waiting with auto-download switched on.
 func (service *Service) EnqueueSingle(ctx context.Context, id int) (Item, error) {
 	record, err := service.database.Subscription.Get(ctx, id)
 	if err != nil {
@@ -56,14 +56,10 @@ func (service *Service) enqueueMovie(ctx context.Context, record *ent.Subscripti
 		service.tasks.NotifyMonitorChanged()
 		return subscriptionItem(updated), nil
 	}
-	submission, err := service.offline.Add(ctx, record.TargetID, best.Hash)
+	updated, err := record.Update().SetHash(best.Hash).SetLastCheckedAt(now).AddChecks(1).
+		SetNextCheckAt(nextDaily(now, checkTime)).ClearError().Save(ctx)
 	if err != nil {
-		return Item{}, fmt.Errorf("submit %s to 115: %w", record.Code, err)
-	}
-	updated, err := record.Update().SetStatus(subscription.StatusAdded).SetHash(best.Hash).SetTaskID(submission.TaskID).
-		SetLastCheckedAt(now).AddChecks(1).ClearNextCheckAt().ClearError().Save(ctx)
-	if err != nil {
-		return Item{}, fmt.Errorf("complete subscription %d: %w", record.ID, err)
+		return Item{}, fmt.Errorf("update subscription %d: %w", record.ID, err)
 	}
 	service.tasks.NotifyMonitorChanged()
 	return subscriptionItem(updated), nil
@@ -142,7 +138,7 @@ func (service *Service) BatchHandler(ctx context.Context, job tasks.Job) error {
 	return nil
 }
 
-// BatchFinished bumps the offline and subscription revisions once the batch commits.
+// BatchFinished bumps the subscription revision once the batch commits.
 func (service *Service) BatchFinished(context.Context, *ent.Tx, tasks.Job, error) (tasks.Change, error) {
-	return tasks.ChangeOffline | tasks.ChangeMonitor, nil
+	return tasks.ChangeMonitor, nil
 }

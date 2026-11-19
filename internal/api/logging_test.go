@@ -52,7 +52,7 @@ func TestAccessLogsOmitQueryAndRefererWithoutChangingPlayback(t *testing.T) {
 		name, method, token string
 		status              int
 	}{
-		{"GET", http.MethodGet, token, http.StatusFound},
+		{"GET", http.MethodGet, token, http.StatusOK},
 		{"HEAD", http.MethodHead, token, http.StatusOK},
 		{"rejected", http.MethodGet, "invalid-secret", http.StatusUnauthorized},
 	} {
@@ -61,8 +61,8 @@ func TestAccessLogsOmitQueryAndRefererWithoutChangingPlayback(t *testing.T) {
 			router := NewRouter(Dependencies{
 				Logger: slog.New(slog.NewJSONHandler(&logs, nil)),
 				Access: NewAccessGateService("password", "session-secret"),
-				STRM: &strmRelayStub{streamURL: destination, headStatus: http.StatusOK,
-					headHeaders: http.Header{"Content-Type": {"video/mp4"}}},
+				STRM: &strmRelayStub{streamURL: destination, relayStatus: http.StatusOK,
+					relayHeaders: http.Header{"Content-Type": {"video/mp4"}}},
 				STRMToken: token,
 			})
 			query := "token=" + url.QueryEscape(tc.token) + "&url=" + url.QueryEscape(destination)
@@ -76,8 +76,8 @@ func TestAccessLogsOmitQueryAndRefererWithoutChangingPlayback(t *testing.T) {
 			if response.Code != tc.status {
 				t.Fatalf("status = %d, want %d", response.Code, tc.status)
 			}
-			if tc.status == http.StatusFound && response.Header().Get("Location") != destination {
-				t.Fatal("signed playback redirect changed")
+			if tc.status == http.StatusOK && response.Header().Get("Location") != "" {
+				t.Fatal("signed playback should stream instead of redirecting")
 			}
 			if req.URL.RawQuery != query || req.Referer() != referer || req.Header.Get("Authorization") != "Bearer header-secret" {
 				t.Fatal("logging changed the original request")

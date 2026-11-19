@@ -9,7 +9,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/ppxb/miyabi/internal/database"
 	"github.com/ppxb/miyabi/internal/domain"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/actor"
 	"github.com/ppxb/miyabi/internal/ent/file"
@@ -20,6 +19,7 @@ import (
 	"github.com/ppxb/miyabi/internal/export"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
 	"github.com/ppxb/miyabi/internal/library/scan"
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/syncx"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
@@ -54,7 +54,7 @@ type Movie struct {
 	Actors       []Entity           `json:"actors"`
 	Tags         []Tag              `json:"tags"`
 	ScrapeStatus movie.ScrapeStatus `json:"scrape_status"`
-	// Source marks movies that have at least one file in a 115 cloud source.
+	// Source marks movies that have at least one file in a cloud source.
 	Source string `json:"source,omitempty"`
 }
 
@@ -68,7 +68,7 @@ type Page struct {
 
 type Service struct {
 	database     *ent.Client
-	drive        *drive.Drive
+	storage      *storage.Service
 	tasks        *tasks.Service
 	scanner      *scan.Scanner
 	localScanner *scan.LocalScanner
@@ -94,19 +94,19 @@ type Options struct {
 	Pacing func(context.Context) error
 }
 
-func New(database *ent.Client, d *drive.Drive, tasks *tasks.Service, images *mediaimage.Cache, options Options) *Service {
+func New(database *ent.Client, mounted *storage.Service, tasks *tasks.Service, images *mediaimage.Cache, options Options) *Service {
 	svc := &Service{
 		database:     database,
-		drive:        d,
+		storage:      mounted,
 		tasks:        tasks,
-		scanner:      scan.New(d, database, images, tasks, options.ExportManager, options.Pacing),
+		scanner:      scan.New(mounted, database, images, tasks, options.ExportManager, options.Pacing),
 		localScanner: scan.NewLocalScanner(database, images),
 		exportMgr:    options.ExportManager,
 		sources:      options.Sources,
 		localSources: options.LocalSources,
 	}
-	if d != nil && tasks != nil {
-		d.SetMountListener(func(ctx context.Context, event drive.MountEvent) error {
+	if mounted != nil && tasks != nil {
+		mounted.SetMountListener(func(ctx context.Context, event storage.MountEvent) error {
 			if event.Source.Directory.ID != "" {
 				if _, err := svc.EnqueueFreshScan(ctx, event.Source); err != nil {
 					return err
@@ -120,7 +120,7 @@ func New(database *ent.Client, d *drive.Drive, tasks *tasks.Service, images *med
 }
 
 func (s *Service) StartScan(ctx context.Context) (domain.TaskInfo, error) {
-	sess, err := s.drive.Open(ctx)
+	sess, err := s.storage.Open(ctx)
 	if err != nil {
 		return domain.TaskInfo{}, err
 	}
@@ -129,7 +129,7 @@ func (s *Service) StartScan(ctx context.Context) (domain.TaskInfo, error) {
 
 // StartRebuild scans the current source and refreshes every matched movie.
 func (s *Service) StartRebuild(ctx context.Context) (domain.TaskInfo, error) {
-	sess, err := s.drive.Open(ctx)
+	sess, err := s.storage.Open(ctx)
 	if err != nil {
 		return domain.TaskInfo{}, err
 	}
@@ -138,10 +138,10 @@ func (s *Service) StartRebuild(ctx context.Context) (domain.TaskInfo, error) {
 
 // Source returns the currently mounted library source, or nil if unmounted.
 func (s *Service) Source() *domain.LibrarySource {
-	if s.drive == nil {
+	if s.storage == nil {
 		return nil
 	}
-	return s.drive.Source()
+	return s.storage.Source()
 }
 
 // MatchingMovies queries local movies matching any of the given JavDB IDs or normalized codes
@@ -342,7 +342,7 @@ func (s *Service) Movies(ctx context.Context, page, limit int) (Page, error) {
 	}
 	order := []movie.OrderOption{ent.Desc(movie.FieldCreatedAt), ent.Desc(movie.FieldID)}
 	if cloudScope != nil {
-		// Newest-joined 115 titles first; local-only movies have no 115 join
+		// Newest-joined cloud titles first; local-only movies have no cloud join
 		// time and fall after them, ordered by their own creation time.
 		order = append([]movie.OrderOption{cloudAddedOrder(sources)}, order...)
 	}
@@ -442,7 +442,7 @@ func (s *Service) TopRated(ctx context.Context, limit int) ([]Movie, error) {
 	return items, nil
 }
 
-// markCloudSources flags movies that have at least one file in a 115 source.
+// markCloudSources flags movies that have at least one file in a cloud source.
 func (s *Service) markCloudSources(ctx context.Context, movies []Movie, cloudScope predicate.File) error {
 	if cloudScope == nil || len(movies) == 0 {
 		return nil
@@ -465,16 +465,16 @@ func (s *Service) markCloudSources(ctx context.Context, movies []Movie, cloudSco
 	}
 	for i := range movies {
 		if inCloud[movies[i].ID] {
-			movies[i].Source = "115"
+			movies[i].Source = domain.LocalAccountID
 		}
 	}
 	return nil
 }
 
-// cloudAddedOrder orders movies by the newest 115 upload time, newest first.
-// upload_time is the 115 "upt" value stored when the file was scanned, so it
-// reflects the real "joined 115" order rather than the local scan time.
-// Local-only movies have no 115 file and rank after every 115 title.
+// cloudAddedOrder orders movies by the newest upload time of their cloud files,
+// newest first. upload_time is recorded by the source when the file appeared
+// there, so it reflects the real "joined" order rather than the local scan time.
+// Local-only movies have no cloud file and rank after every cloud title.
 func cloudAddedOrder(sources []domain.LibrarySource) movie.OrderOption {
 	return func(selector *sql.Selector) {
 		query := sql.Dialect(selector.Dialect()).String(func(b *sql.Builder) {

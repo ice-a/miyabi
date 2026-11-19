@@ -21,6 +21,9 @@ import (
 
 var ErrNotFound = errors.New("metadata not found")
 
+// maxConcurrentFetches bounds concurrent upstream fetches of one source.
+const maxConcurrentFetches = 8
+
 // Source returns confirmed identities, never the closest unverified search hit.
 type Source interface {
 	ID() string
@@ -48,7 +51,7 @@ type Service struct {
 }
 
 func New(ctx context.Context, db *ent.Client, sources ...Source) (*Service, error) {
-	s := &Service{db: db, sources: make(map[string]Source), capacity: make(chan struct{}, 8)}
+	s := &Service{db: db, sources: make(map[string]Source), capacity: make(chan struct{}, maxConcurrentFetches)}
 	s.ctx, s.cancel = context.WithCancel(ctx)
 	for _, source := range sources {
 		if _, exists := s.sources[source.ID()]; exists {
@@ -218,19 +221,6 @@ func (s *Service) resolveLayer(ctx context.Context, source Source, ref domain.Mo
 		return matched, ErrNotFound
 	}
 	return matched, nil
-}
-
-// Optional series, director and rating may legitimately be absent.
-// They do not force another supplementary source request.
-func needsSupplement(result domain.MovieMetadata) bool {
-	m := result.Detail
-	cover, preview := false, false
-	for _, candidate := range result.Images {
-		cover = cover || candidate.Role == "cover" || candidate.Role == "poster"
-		preview = preview || candidate.Role == "preview"
-	}
-	return m.Title == "" || m.ReleaseDate == "" || m.Duration == 0 ||
-		len(m.Actors) == 0 || m.Maker == nil || len(m.Tags) == 0 || !cover || !preview
 }
 
 func attachJavDBIdentity(result domain.MovieMetadata, knownID string) (domain.MovieMetadata, error) {

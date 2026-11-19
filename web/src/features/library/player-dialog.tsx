@@ -109,7 +109,7 @@ function LibraryPlayer({ movieId }: { movieId: number }) {
         )}
       </div>
       <aside className="min-w-0 shrink-0 overflow-y-auto border-t bg-background p-5 lg:w-[26rem] lg:border-t-0 lg:border-l">
-        <MovieInfo movieId={movieId} show115={!!playback.data?.source} />
+        <MovieInfo movieId={movieId} source={playback.data?.source.directory.path} />
       </aside>
     </>
   )
@@ -178,7 +178,7 @@ function PlaybackSync({
   return null
 }
 
-function MovieInfo({ movieId, show115 = false }: { movieId: number; show115?: boolean }) {
+function MovieInfo({ movieId, source }: { movieId: number; source?: string }) {
   const detail = useLibraryMovie(movieId)
   const movie = detail.data
 
@@ -191,7 +191,7 @@ function MovieInfo({ movieId, show115 = false }: { movieId: number; show115?: bo
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="frosted">{movie.code}</Badge>
-          {show115 ? <Badge variant="frosted">115</Badge> : null}
+          {source && source !== 'local' ? <Badge variant="frosted">{source}</Badge> : null}
         </div>
         <h2 className="text-xl leading-snug font-bold">{movie.title || movie.code}</h2>
         {movie.origin_title && movie.origin_title !== movie.title ? (

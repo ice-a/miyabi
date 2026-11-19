@@ -19,8 +19,7 @@ type Dependencies struct {
 	Access         AccessGate
 	Catalogue      CatalogueManager
 	Metadata       MetadataManager
-	Drive          DriveManager
-	Offline        OfflineManager
+	Storage        StorageManager
 	Monitor        SubscriptionManager
 	Library        LibraryManager
 	Play           PlayManager
@@ -68,11 +67,10 @@ func NewRouter(deps Dependencies) *gin.Engine {
 	authAPI.POST("/login", accessLoginHandler(deps.Access, loginLimiter))
 
 	// Exported .strm files keep this path; it must stay stable across releases.
+	// The wildcard form accepts IDs that carry a path or a relative sub path.
 	strmHandler := strmStreamHandler(deps.STRM, deps.STRMToken, deps.Access)
-	api.GET("/strm/play/:fileID", noStore(), strmHandler)
-	api.HEAD("/strm/play/:fileID", noStore(), strmHandler)
-	api.GET("/strm/play/:fileID/*filename", noStore(), strmHandler)
-	api.HEAD("/strm/play/:fileID/*filename", noStore(), strmHandler)
+	api.GET("/strm/play/*fileID", noStore(), strmHandler)
+	api.HEAD("/strm/play/*fileID", noStore(), strmHandler)
 
 	protected := api.Group("", authMiddleware(deps.Access))
 
@@ -94,6 +92,9 @@ func NewRouter(deps Dependencies) *gin.Engine {
 	settingsAPI.PUT("/subscription", subscriptionSettingsUpdateHandler(deps.Monitor))
 	settingsAPI.GET("/sources", sourceListHandler(deps.Sources))
 	settingsAPI.PUT("/sources", sourceUpdateHandler(deps.Sources))
+	settingsAPI.GET("/storage", storageDirectoryHandler(deps.Storage))
+	settingsAPI.PUT("/storage", storageMountHandler(deps.Storage))
+	settingsAPI.DELETE("/storage", storageClearHandler(deps.Storage))
 
 	protected.GET("/library/movies", libraryMoviesHandler(deps.Library))
 	protected.GET("/library/top-rated", libraryTopRatedHandler(deps.Library))
@@ -124,9 +125,6 @@ func NewRouter(deps Dependencies) *gin.Engine {
 	protected.POST("/tasks/:id/retry", taskRetryHandler(deps.Tasks))
 	protected.PUT("/tasks/library-control", taskLibraryControlHandler(deps.Tasks))
 	protected.GET("/tasks/events", taskEventsHandler(deps.Tasks))
-	protected.GET("/offline/tasks", noStore(), offlineActivityHandler(deps.Offline))
-	protected.POST("/offline/tasks/:id/cancel", offlineControlHandler(deps.Offline, false))
-	protected.POST("/offline/tasks/:id/next", offlineControlHandler(deps.Offline, true))
 
 	subscriptionsAPI := protected.Group("/subscriptions", noStore())
 	subscriptionsAPI.GET("", subscriptionListHandler(deps.Monitor))
@@ -148,23 +146,7 @@ func NewRouter(deps Dependencies) *gin.Engine {
 	protected.GET("/discover/movies/:id", discoverMovieHandler(deps.Catalogue))
 	protected.GET("/discover/movies/resolve", discoverResolveMovieHandler(deps.Catalogue))
 	protected.GET("/discover/movies/:id/magnets", discoverMagnetsHandler(deps.Catalogue))
-	protected.POST("/discover/movies/:id/offline", offlineAddHandler(deps.Offline))
 	protected.GET("/image", imageHandler(deps.Catalogue))
-
-	panAPI := protected.Group("/pan", noStore())
-	panAPI.GET("/account", panAccountHandler(deps.Drive))
-	panAPI.GET("/accounts", panAccountsHandler(deps.Drive))
-	panAPI.GET("/accounts/:accountID", panAccountStatusHandler(deps.Drive))
-	panAPI.GET("/accounts/:accountID/files", panAccountFilesHandler(deps.Drive))
-	panAPI.PUT("/accounts/:accountID/directory", panAccountSelectDirectoryHandler(deps.Drive))
-	panAPI.DELETE("/accounts/:accountID/directory", panAccountClearDirectoryHandler(deps.Drive))
-	panAPI.DELETE("/accounts/:accountID", panAccountDisconnectHandler(deps.Drive))
-	panAPI.DELETE("/account", panDisconnectHandler(deps.Drive))
-	panAPI.POST("/login", panBeginLoginHandler(deps.Drive))
-	panAPI.GET("/login/:id", panLoginStatusHandler(deps.Drive))
-	panAPI.GET("/files", panFilesHandler(deps.Drive))
-	panAPI.PUT("/directory", panSelectDirectoryHandler(deps.Drive))
-	panAPI.DELETE("/directory", panClearDirectoryHandler(deps.Drive))
 
 	if deps.Frontend != nil {
 		installFrontend(router, deps.Frontend)

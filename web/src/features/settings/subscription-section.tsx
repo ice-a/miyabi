@@ -55,7 +55,7 @@ export function SubscriptionSection() {
     <SettingsSection icon={<BellIcon className="size-4" />} title="订阅与下载">
       <SettingRow
         title="影片默认自动入库"
-        description="新订阅的影片出现符合偏好的磁力后自动加入 115"
+        description="新订阅的影片出现符合偏好的磁力后自动记录磁力"
         inline
       >
         <Switch
@@ -67,7 +67,7 @@ export function SubscriptionSection() {
 
       <SettingRow
         title="演员新作默认自动入库"
-        description="演员订阅发现的新作是否默认自动加入 115"
+        description="演员订阅发现的新作是否默认自动记录磁力"
         inline
       >
         <Switch

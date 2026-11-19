@@ -9,8 +9,8 @@ export class ApiError extends Error {
   }
 }
 
-export function isPanUnauthorized(error: unknown): boolean {
-  return error instanceof ApiError && error.code === 'PAN_UNAUTHORIZED'
+export function isStorageSourceChanged(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'STORAGE_SOURCE_CHANGED'
 }
 
 export function isJavDBLoginRequired(error: unknown): boolean {
@@ -18,7 +18,7 @@ export function isJavDBLoginRequired(error: unknown): boolean {
 }
 
 export function describeApiError(error: unknown): string {
-  if (isPanUnauthorized(error)) return '115 登录已失效，请前往设置重新登录。'
+  if (isStorageSourceChanged(error)) return '媒体目录已变更，请前往设置重新选择。'
   return error instanceof ApiError ? error.message : '请检查后端服务和网络后重试。'
 }
 

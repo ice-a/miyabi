@@ -7,17 +7,16 @@ import (
 	"github.com/ppxb/miyabi/internal/database"
 	"github.com/ppxb/miyabi/internal/domain"
 	subtitlemeta "github.com/ppxb/miyabi/internal/domain/subtitle"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/file"
 	"github.com/ppxb/miyabi/internal/ent/movie"
 	"github.com/ppxb/miyabi/internal/export"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
-func (service *Service) publishMovie(ctx context.Context, sess drive.Session, job tasks.Job, input Payload) (*SubtitleTask, error) {
+func (service *Service) publishMovie(ctx context.Context, sess storage.Session, job tasks.Job, input Payload) (*SubtitleTask, error) {
 	// The unfinished task retains these cache files during remote queries
 	// and local export, until the final transaction publishes movie references.
 	artwork := *input.Artwork
@@ -40,7 +39,7 @@ func (service *Service) publishMovie(ctx context.Context, sess drive.Session, jo
 		DirectoryID:   input.Source.Directory.ID,
 		PosterVersion: input.PosterVersion,
 	}
-	var videos []pan.File
+	var videos []storage.File
 	for i, directory := range directories {
 		if err := service.verifyVideoPositions(ctx, sess, directory); err != nil {
 			return nil, err
@@ -56,7 +55,7 @@ func (service *Service) publishMovie(ctx context.Context, sess drive.Session, jo
 	}
 	// Deduplicate and sort all videos across all directories
 	seenVideos := make(map[string]bool, len(videos))
-	uniqueVideos := make([]pan.File, 0, len(videos))
+	uniqueVideos := make([]storage.File, 0, len(videos))
 	for _, v := range videos {
 		if !seenVideos[v.ID] {
 			seenVideos[v.ID] = true
@@ -87,9 +86,9 @@ func (service *Service) publishMovie(ctx context.Context, sess drive.Session, jo
 			if err != nil {
 				return err
 			}
-			current := make([]pan.File, 0, len(files))
+			current := make([]storage.File, 0, len(files))
 			for _, entry := range files {
-				current = append(current, pan.File{ID: entry.FileID, ParentID: entry.ParentID, Name: entry.Name, Size: entry.Size, SHA1: entry.Sha1})
+				current = append(current, storage.File{ID: entry.FileID, ParentID: entry.ParentID, Name: entry.Name, Size: entry.Size, SHA1: entry.Sha1})
 			}
 			if len(current) == 0 {
 				return domain.E(domain.KindConflict, "媒体文件索引已变化，请重新扫描", nil)
@@ -147,7 +146,7 @@ func (service *Service) publishMovie(ctx context.Context, sess drive.Session, jo
 
 // subtitleTask targets the .strm exported for a movie's video. Multi-part
 // movies export one .strm per part, and whole-movie subtitles fit none of them.
-func (service *Service) subtitleTask(input MetadataPayload, videos []pan.File) *SubtitleTask {
+func (service *Service) subtitleTask(input MetadataPayload, videos []storage.File) *SubtitleTask {
 	if service.subtitles == nil || len(videos) != 1 {
 		return nil
 	}
@@ -163,13 +162,13 @@ func (service *Service) subtitleTask(input MetadataPayload, videos []pan.File) *
 	}
 }
 
-func (service *Service) verifyVideoPositions(ctx context.Context, sess drive.Session, directory MovieDirectory) error {
+func (service *Service) verifyVideoPositions(ctx context.Context, sess storage.Session, directory MovieDirectory) error {
 	for videoID := range directory.VideoIDs {
 		info, err := sess.Info(ctx, videoID)
 		if err != nil {
 			return fmt.Errorf("确认视频文件位置: %w", err)
 		}
-		if info.ParentID != directory.ID || !drive.WithinSource(info, sess.Source()) {
+		if info.ParentID != directory.ID || !storage.Within(info, sess.Source()) {
 			return domain.E(domain.KindConflict, "视频已移动，请重新扫描", nil)
 		}
 	}

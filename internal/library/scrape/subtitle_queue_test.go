@@ -9,7 +9,8 @@ import (
 
 	subtitlemeta "github.com/ppxb/miyabi/internal/domain/subtitle"
 	"github.com/ppxb/miyabi/internal/export"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 type subtitleExporterFunc func(context.Context, int, subtitlemeta.Target) (int, error)
@@ -125,21 +126,21 @@ func TestSubtitleTaskTargetsTheExportedSTRM(t *testing.T) {
 	t.Cleanup(service.Close)
 	input := MetadataPayload{MovieID: 7, Code: "SSIS-589"}
 
-	task := service.subtitleTask(input, []pan.File{{ID: "video", Name: "SSIS-589-UC.mp4"}})
+	task := service.subtitleTask(input, []storage.File{{ID: "video", Name: "SSIS-589-UC.mp4"}})
 	if task == nil || task.MovieID != 7 || task.Target.Dir != filepath.Join("emby", "SSIS", "SSIS-589") ||
 		task.Target.Stem != "SSIS-589" || task.Target.Code != "SSIS-589" ||
 		!task.Target.Uncensored || !task.Target.HardSubtitled {
 		t.Fatalf("subtitle task = %+v", task)
 	}
-	if task := service.subtitleTask(input, []pan.File{{Name: "SSIS-589.mp4"}}); task == nil || task.Target.Uncensored || task.Target.HardSubtitled {
+	if task := service.subtitleTask(input, []storage.File{{Name: "SSIS-589.mp4"}}); task == nil || task.Target.Uncensored || task.Target.HardSubtitled {
 		t.Fatalf("plain release task = %+v", task)
 	}
-	parts := []pan.File{{Name: "SSIS-589-CD1.mp4"}, {Name: "SSIS-589-CD2.mp4"}}
+	parts := []storage.File{{Name: "SSIS-589-CD1.mp4"}, {Name: "SSIS-589-CD2.mp4"}}
 	if task := service.subtitleTask(input, parts); task != nil {
 		t.Fatalf("multi-part movie received a single subtitle target: %+v", task)
 	}
 	service.subtitles = nil
-	if task := service.subtitleTask(input, []pan.File{{Name: "SSIS-589.mp4"}}); task != nil {
+	if task := service.subtitleTask(input, []storage.File{{Name: "SSIS-589.mp4"}}); task != nil {
 		t.Fatalf("subtitle task created without an exporter: %+v", task)
 	}
 }

@@ -8,15 +8,14 @@ import (
 
 	"github.com/ppxb/miyabi/internal/codeid"
 	"github.com/ppxb/miyabi/internal/domain"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/file"
 	"github.com/ppxb/miyabi/internal/ent/movie"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 // canIdentifyVideo reports whether a file meets the requirements for a feature video or STRM.
-func canIdentifyVideo(entry pan.File) bool {
+func canIdentifyVideo(entry storage.File) bool {
 	if entry.IsDirectory {
 		return false
 	}
@@ -27,7 +26,7 @@ func canIdentifyVideo(entry pan.File) bool {
 }
 
 // IdentifyVideo parses the filename of a single file to extract a catalogue number.
-func IdentifyVideo(file pan.File) Video {
+func IdentifyVideo(file storage.File) Video {
 	code, _ := codeid.Parse(file.Name)
 	return Video{File: file, Code: code}
 }
@@ -87,7 +86,7 @@ func applyManualCodes(ctx context.Context, db *ent.Client, accountID string, vid
 
 // ResolveNFOCodes uses matching NFOs only to identify and validate catalogue codes.
 // A sole NFO may identify unnamed videos only in an unshared directory.
-func ResolveNFOCodes(ctx context.Context, sess drive.Session, sidecars []pan.File, videos []Video) error {
+func ResolveNFOCodes(ctx context.Context, sess storage.Session, sidecars []storage.File, videos []Video) error {
 	if len(sidecars) == 0 {
 		return nil
 	}
@@ -143,16 +142,16 @@ func ResolveNFOCodes(ctx context.Context, sess drive.Session, sidecars []pan.Fil
 }
 
 // A targeted download checks only its matching NFO, not other movies' metadata.
-func resolveTargetNFO(ctx context.Context, sess drive.Session, videos []Video) error {
+func resolveTargetNFO(ctx context.Context, sess storage.Session, videos []Video) error {
 	video := videos[0]
 	if video.Manual || !canIdentifyVideo(video.File) {
 		return nil
 	}
-	entries, err := drive.DirectoryEntries(ctx, sess, video.ParentID)
+	entries, err := storage.DirectoryEntries(ctx, sess, video.ParentID)
 	if err != nil {
 		return err
 	}
-	var sidecars []pan.File
+	var sidecars []storage.File
 	shared := false
 	for _, entry := range entries {
 		if !entry.IsDirectory && strings.EqualFold(path.Ext(entry.Name), ".nfo") {
@@ -167,5 +166,5 @@ func resolveTargetNFO(ctx context.Context, sess drive.Session, videos []Video) e
 	if !found {
 		return nil
 	}
-	return ResolveNFOCodes(ctx, sess, []pan.File{entry}, videos)
+	return ResolveNFOCodes(ctx, sess, []storage.File{entry}, videos)
 }

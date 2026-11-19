@@ -7,7 +7,7 @@ import (
 	"github.com/ppxb/miyabi/internal/domain/download"
 )
 
-// OfflineDownload records a remote 115 download independently of executable tasks.
+// OfflineDownload records a cloud offline download independently of executable tasks.
 type OfflineDownload struct{ ent.Schema }
 
 func (OfflineDownload) Mixin() []ent.Mixin { return []ent.Mixin{TimeMixin{}} }

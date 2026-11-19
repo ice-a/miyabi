@@ -1,7 +1,7 @@
 package domain
 
 // SubscriptionBatch is the progress of one queued batch ingestion: every
-// selected movie subscription is either submitted to 115, left waiting for a
+// selected movie subscription either records a magnet, stays waiting for a
 // qualifying magnet, or failed.
 type SubscriptionBatch struct {
 	Total     int                   `json:"total"`

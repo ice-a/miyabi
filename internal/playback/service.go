@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/ppxb/miyabi/internal/domain"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 type PlayFiles struct {
@@ -33,19 +33,24 @@ type Playback struct {
 // Service manages playback sessions and stream proxying.
 type Service struct {
 	database *ent.Client
-	drive    *drive.Drive
+	storage  *storage.Service
 	mu       sync.Mutex
 	sessions map[string]*playSession
 	// sessionTTL releases sessions abandoned by a closed tab.
 	sessionTTL time.Duration
+	// afterFunc schedules session expiry; tests replace it with a fake.
+	afterFunc func(time.Duration, func()) sessTimer
 }
 
-func New(database *ent.Client, d *drive.Drive, sessionTTL time.Duration) *Service {
+func New(database *ent.Client, mounted *storage.Service, sessionTTL time.Duration) *Service {
 	return &Service{
 		database:   database,
-		drive:      d,
+		storage:    mounted,
 		sessions:   make(map[string]*playSession),
 		sessionTTL: sessionTTL,
+		afterFunc: func(delay time.Duration, fn func()) sessTimer {
+			return time.AfterFunc(delay, fn)
+		},
 	}
 }
 

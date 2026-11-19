@@ -69,7 +69,7 @@ func TestAddActorRequiresWorksPage(t *testing.T) {
 	}
 }
 
-func TestCheckMovieWithoutAutoDownloadWaitsUntilTomorrow(t *testing.T) {
+func TestCheckMovieRecordsPickAndLooksAgain(t *testing.T) {
 	f, ctx := newFixture(t), t.Context()
 	item, _ := f.service.AddMovie(ctx, "m1", AddMovieOptions{AutoDownload: ptr(false)})
 	f.discover.magnets["m1"] = []domain.Magnet{{Hash: "h1", Name: "MOCK-m1", HasSubtitle: true}}
@@ -77,8 +77,8 @@ func TestCheckMovieWithoutAutoDownloadWaitsUntilTomorrow(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := f.client.Subscription.GetX(ctx, item.ID)
-	if record.Status != subscription.StatusWaiting || record.Hash != "h1" || record.NextCheckAt == nil || !record.NextCheckAt.After(time.Now()) || len(f.offline.submissions) != 0 {
-		t.Fatalf("manual subscriptions remember the pick and wait for tomorrow: %#v submissions=%d", record, len(f.offline.submissions))
+	if record.Status != subscription.StatusWaiting || record.Hash != "h1" || record.NextCheckAt == nil || !record.NextCheckAt.After(time.Now()) {
+		t.Fatalf("a subscription remembers the pick and waits for tomorrow: %#v", record)
 	}
 
 	if _, err := f.service.Update(ctx, item.ID, UpdateOptions{AutoDownload: ptr(true)}); err != nil {
@@ -88,8 +88,8 @@ func TestCheckMovieWithoutAutoDownloadWaitsUntilTomorrow(t *testing.T) {
 	if err := f.service.Check(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if record = f.client.Subscription.GetX(ctx, item.ID); record.Status != subscription.StatusAdded || len(f.offline.submissions) != 1 {
-		t.Fatalf("with auto-download the same check submits: %#v submissions=%d", record, len(f.offline.submissions))
+	if record = f.client.Subscription.GetX(ctx, item.ID); record.Hash != "h1" || record.Checks != 2 {
+		t.Fatalf("a repeated check keeps the same pick without touching a drive: %#v", record)
 	}
 }
 

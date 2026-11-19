@@ -1,13 +1,11 @@
 package source
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/ppxb/miyabi/internal/database"
-	"github.com/ppxb/miyabi/internal/domain"
 )
 
 func newTestService(t *testing.T) *Service {
@@ -80,7 +78,6 @@ func TestLocalRoots(t *testing.T) {
 	if _, err := service.Replace(ctx, []Source{
 		{Kind: KindLocal, Name: "first", Enabled: true, Config: map[string]string{"path": first}},
 		{Kind: KindLocal, Name: "second", Enabled: false, Config: map[string]string{"path": second}},
-		{Kind: Kind115, Name: "cloud", Enabled: true, Config: map[string]string{"account_id": "A"}},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -94,37 +91,13 @@ func TestLocalRoots(t *testing.T) {
 	}
 }
 
-type fakeMounts struct {
-	mounts map[string]domain.LibrarySource
-}
-
-func (f fakeMounts) Mount(_ context.Context, accountID string) (domain.LibrarySource, bool) {
-	source, ok := f.mounts[accountID]
-	return source, ok
-}
-
-func TestLibrarySources(t *testing.T) {
+func TestRetiredCloudKind(t *testing.T) {
 	ctx := t.Context()
 	service := newTestService(t)
-	mounted := domain.LibrarySource{
-		AccountID: "A",
-		Directory: domain.LibraryDirectory{ID: "10", Name: "Movies", Path: "/Movies"},
-	}
-	service.SetMountProvider(fakeMounts{mounts: map[string]domain.LibrarySource{"A": mounted}})
 
 	if _, err := service.Replace(ctx, []Source{
-		{Kind: Kind115, Name: "bound", Enabled: true, Config: map[string]string{"account_id": "A"}},
-		{Kind: Kind115, Name: "disabled", Enabled: false, Config: map[string]string{"account_id": "A"}},
-		{Kind: Kind115, Name: "unmounted", Enabled: true, Config: map[string]string{"account_id": "ZZ"}},
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	list, err := service.LibrarySources(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(list) != 1 || list[0].AccountID != "A" || list[0].Directory.ID != "10" {
-		t.Fatalf("library sources = %+v", list)
+		{Kind: KindLegacyPan, Name: "cloud", Enabled: true, Config: map[string]string{"account_id": "A"}},
+	}); err == nil {
+		t.Fatal("expected the retired cloud kind to be rejected")
 	}
 }

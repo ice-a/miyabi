@@ -17,7 +17,7 @@ type Media struct {
 	Body        []byte
 }
 
-// OfflineSubmission is the projected state of one 115 offline download workflow.
+// OfflineSubmission is the projected state of one cloud offline download workflow.
 type OfflineSubmission struct {
 	TaskID        int        `json:"task_id"`
 	Code          string     `json:"code"`

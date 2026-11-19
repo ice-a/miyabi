@@ -16,7 +16,6 @@ import (
 	"github.com/ppxb/miyabi/internal/config"
 	"github.com/ppxb/miyabi/internal/database"
 	"github.com/ppxb/miyabi/internal/domain"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/emby"
 	"github.com/ppxb/miyabi/internal/export"
 	"github.com/ppxb/miyabi/internal/gfriends"
@@ -30,19 +29,16 @@ import (
 	"github.com/ppxb/miyabi/internal/monitor"
 	"github.com/ppxb/miyabi/internal/network"
 	"github.com/ppxb/miyabi/internal/netx"
-	"github.com/ppxb/miyabi/internal/offline"
 	"github.com/ppxb/miyabi/internal/playback"
 	"github.com/ppxb/miyabi/internal/source"
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/strm"
 	"github.com/ppxb/miyabi/internal/subtitle"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
 const (
-	offlineSyncInterval  = 30 * time.Second
 	monitorCheckInterval = 5 * time.Minute
-	// Bound a remote offline submission after detaching from its caller.
-	offlineSubmitTimeout = 2 * time.Minute
 )
 
 // App is the composition root assembling services, background workers, and the HTTP server.
@@ -52,9 +48,8 @@ type App struct {
 	store     *database.Store
 	server    *http.Server
 	pools     []*tasks.Pool
-	offline   *offline.Service
 	monitors  *monitor.Service
-	driveSvc  *drive.Drive
+	storage   *storage.Service
 	play      *playback.Service
 	catalogue *catalogue.Service
 	scrape    *scrape.Service
@@ -80,16 +75,10 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	taskRegistry := tasks.NewRegistry()
 	taskSvc := tasks.NewService(store.Client, taskRegistry)
 	sourceSvc := source.New(store.Client)
-	driveSvc, err := drive.New(ctx, store.Client)
-	if err != nil {
-		_ = store.Close()
-		return nil, fmt.Errorf("initialize drive service: %w", err)
-	}
-	driveSvc.StartAccountRefresh(ctx)
+	storageSvc := storage.New(ctx, store.Client, nil)
 
 	images, err := mediaimage.NewCache(cfg.DataDir)
 	if err != nil {
-		driveSvc.Close()
 		_ = store.Close()
 		return nil, fmt.Errorf("initialize images cache: %w", err)
 	}
@@ -97,10 +86,9 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	exportMgr := export.NewManager(export.Config{
 		EmbyDir: cfg.EmbyDir, PublicURL: cfg.PublicURL, STRMToken: cfg.STRMToken,
 	})
-	playSvc := playback.New(store.Client, driveSvc, 8*time.Hour)
-	libSvc := library.New(store.Client, driveSvc, taskSvc, images, library.Options{
+	playSvc := playback.New(store.Client, storageSvc, 8*time.Hour)
+	libSvc := library.New(store.Client, storageSvc, taskSvc, images, library.Options{
 		ExportManager: exportMgr,
-		Sources:       sourceSvc.LibrarySources,
 		LocalSources: func(ctx context.Context) ([]library.LocalScanTarget, error) {
 			targets, err := sourceSvc.LocalTargets(ctx)
 			if err != nil {
@@ -113,25 +101,18 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 			return result, nil
 		},
 	})
-	sourceSvc.SetMountProvider(driveSvc)
-	sourceSvc.SetScanHandler(func(ctx context.Context, src domain.LibrarySource) error {
-		_, err := libSvc.EnqueueSyncMode(ctx, src, false)
-		return err
-	})
 	sourceSvc.SetLocalScanHandler(func(ctx context.Context, root string, metadataOnly bool) error {
 		_, err := libSvc.StartLocalSourceScanModeIncremental(ctx, root, metadataOnly)
 		return err
 	})
 	javbusClient, err := javbus.New(javbus.Options{Proxy: networkSvc.ProxyManager()})
 	if err != nil {
-		driveSvc.Close()
 		_ = store.Close()
 		return nil, err
 	}
 	catalogueSvc, err := catalogue.New(ctx, store.Client, networkSvc.ProxyManager(), libSvc, javbusClient)
 	if err != nil {
 		javbusClient.Close()
-		driveSvc.Close()
 		_ = store.Close()
 		return nil, fmt.Errorf("initialize catalogue service: %w", err)
 	}
@@ -139,24 +120,24 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	fanzaSource := providers.NewFANZA(networkSvc.ProxyManager())
 	heyzoSource := providers.NewHEYZO(networkSvc.ProxyManager())
 	pacopacomamaSource := providers.NewPacopacomama(networkSvc.ProxyManager())
+	missavSource := providers.NewMissAV(networkSvc.ProxyManager())
 	metadataSvc, err := metadata.New(ctx, store.Client, fanzaSource, fc2Source, heyzoSource, pacopacomamaSource,
 		providers.NewJavDB(catalogueSvc), providers.NewJavBus(javbusClient, networkSvc.ProxyManager()),
 		providers.NewR18(networkSvc.ProxyManager()), providers.NewOnePondo(networkSvc.ProxyManager()),
 		providers.NewCodeAV(networkSvc.ProxyManager()),
-		providers.NewJavDatabase(networkSvc.ProxyManager()))
+		providers.NewJavDatabase(networkSvc.ProxyManager()), missavSource)
 	if err != nil {
 		fanzaSource.Close()
 		fc2Source.Close()
 		heyzoSource.Close()
 		pacopacomamaSource.Close()
+		missavSource.Close()
 		catalogueSvc.Close()
-		driveSvc.Close()
 		_ = store.Close()
 		return nil, err
 	}
 
-	offlineSvc := offline.New(store.Client, catalogueSvc, driveSvc, taskSvc, libSvc, offlineSubmitTimeout)
-	monitorSvc := monitor.New(store.Client, catalogueSvc, offlineSvc, taskSvc)
+	monitorSvc := monitor.New(store.Client, catalogueSvc, taskSvc)
 	subtitleSvc := subtitle.NewService(store.Client, subtitle.NewFinder(networkSvc.ProxyManager()))
 	gfriendsClient := gfriends.New(cfg.DataDir, &http.Client{
 		Timeout:   30 * time.Second,
@@ -180,14 +161,13 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	if err != nil {
 		metadataSvc.Close()
 		catalogueSvc.Close()
-		driveSvc.Close()
 		_ = store.Close()
 		return nil, fmt.Errorf("initialize emby service: %w", err)
 	}
 	// This is the only cycle: library -> Emby -> catalogue -> library.
 	// Bind it before starting task pools or accepting requests.
 	libSvc.SetMediaNotifier(embySvc)
-	scrapeSvc := scrape.New(store.Client, driveSvc, metadataSvc, images, taskSvc, scrape.Dependencies{
+	scrapeSvc := scrape.New(store.Client, storageSvc, metadataSvc, images, taskSvc, scrape.Dependencies{
 		ExportManager: exportMgr, MediaNotifier: embySvc, Subtitles: subtitleSvc,
 	})
 	maintenanceSvc, err := maintenance.New(cfg.DataDir, store.Client, images, scrapeSvc)
@@ -196,7 +176,6 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		embySvc.Close()
 		metadataSvc.Close()
 		catalogueSvc.Close()
-		driveSvc.Close()
 		_ = store.Close()
 		return nil, fmt.Errorf("initialize maintenance service: %w", err)
 	}
@@ -210,15 +189,6 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		for _, target := range targets {
 			if _, err := libSvc.StartLocalSourceScanMode(ctx, target.Path, target.MetadataOnly); err != nil {
 				logger.ErrorContext(ctx, "failed to queue local source scan", "path", target.Path, "error", err)
-			}
-		}
-	}
-	if mounts, err := sourceSvc.LibrarySources(ctx); err != nil {
-		logger.ErrorContext(ctx, "failed to load cloud sources", "error", err)
-	} else {
-		for _, source := range mounts {
-			if _, err := libSvc.EnqueueScan(ctx, source); err != nil {
-				logger.ErrorContext(ctx, "failed to queue cloud source scan", "error", err)
 			}
 		}
 	}
@@ -237,12 +207,11 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		Access:         api.NewAccessGateService(cfg.AccessPassword, cfg.JWTSecret),
 		Catalogue:      catalogueSvc,
 		Metadata:       metadataSvc,
-		Drive:          driveSvc,
-		Offline:        offlineSvc,
+		Storage:        storageSvc,
 		Monitor:        monitorSvc,
 		Library:        libSvc,
 		Play:           playSvc,
-		STRM:           strm.New(store.Client, driveSvc),
+		STRM:           strm.New(store.Client, storageSvc),
 		Tasks:          &taskViews{Service: taskSvc, database: store.Client, library: libSvc, monitor: monitorSvc},
 		Artwork:        scrapeSvc,
 		Maintenance:    maintenanceSvc,
@@ -268,9 +237,8 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		store:     store,
 		server:    server,
 		pools:     pools,
-		offline:   offlineSvc,
 		monitors:  monitorSvc,
-		driveSvc:  driveSvc,
+		storage:   storageSvc,
 		play:      playSvc,
 		catalogue: catalogueSvc,
 		scrape:    scrapeSvc,
@@ -294,9 +262,6 @@ func (a *App) Run(ctx context.Context) error {
 			poolError <- pool.Run(ctx)
 		})
 	}
-	workers.Go(func() {
-		tasks.RunPeriodic(ctx, a.logger, "sync 115 offline tasks", offlineSyncInterval, nil, a.offline.Sync)
-	})
 	workers.Go(func() {
 		tasks.RunPeriodic(ctx, a.logger, "monitor", monitorCheckInterval, a.monitors.Pending(), a.monitors.Check)
 	})
@@ -347,9 +312,6 @@ func (a *App) Close() error {
 	}
 	if a.play != nil {
 		a.play.Close()
-	}
-	if a.driveSvc != nil {
-		a.driveSvc.Close()
 	}
 	if a.store != nil {
 		return a.store.Close()

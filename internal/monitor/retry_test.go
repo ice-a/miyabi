@@ -8,6 +8,7 @@ import (
 
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/ent"
+	"github.com/ppxb/miyabi/internal/ent/subscription"
 	"github.com/ppxb/miyabi/internal/ent/task"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
@@ -60,8 +61,15 @@ func TestBatchCheckpointFailureStopsAndCanResumeWithoutDuplicateSubmission(t *te
 	})
 	record := f.client.Task.GetX(ctx, id)
 	err = f.service.BatchHandler(ctx, tasks.Job{ID: id, Type: tasks.KindSubscriptionBatch, Payload: record.Payload})
-	if !errors.Is(err, failure) || len(f.offline.submissions) != 1 {
-		t.Fatalf("batch continued past lost checkpoint: %v, %+v", err, f.offline.submissions)
+	if !errors.Is(err, failure) {
+		t.Fatalf("batch continued past lost checkpoint: %v", err)
+	}
+	countHashes := func() int {
+		t.Helper()
+		return f.client.Subscription.Query().Where(subscription.HashNEQ("")).CountX(ctx)
+	}
+	if countHashes() != 1 {
+		t.Fatalf("expected one recorded pick before the lost checkpoint")
 	}
 	if err := f.tasks.Queue().Finish(ctx, id, err); err != nil {
 		t.Fatal(err)
@@ -74,8 +82,9 @@ func TestBatchCheckpointFailureStopsAndCanResumeWithoutDuplicateSubmission(t *te
 	if err := f.service.BatchHandler(ctx, tasks.Job{ID: id, Type: tasks.KindSubscriptionBatch, Payload: record.Payload}); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.offline.submissions) != 2 || f.offline.submissions[0].MovieID != "first" || f.offline.submissions[1].MovieID != "second" {
-		t.Fatalf("resuming duplicated submissions: %+v", f.offline.submissions)
+	record = f.client.Task.GetX(ctx, id)
+	if got := countHashes(); got != 2 {
+		t.Fatalf("resuming duplicated picks: %d", got)
 	}
 }
 
@@ -138,8 +147,8 @@ func TestBatchPersistsFailureIDsAndRetriesSuccessfulSubset(t *testing.T) {
 		t.Fatal(err)
 	}
 	run()
-	if len(f.offline.submissions) != 1 {
-		t.Fatalf("retry submissions: %+v", f.offline.submissions)
+	if f.discover.magnetCalls != 2 {
+		t.Fatalf("retry lookups: %d", f.discover.magnetCalls)
 	}
 	if _, err := f.service.RetryTask(ctx, id); !domain.IsKind(err, domain.KindConflict) {
 		t.Fatalf("successful batch retried: %v", err)

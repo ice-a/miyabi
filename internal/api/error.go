@@ -11,10 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ppxb/miyabi/internal/domain"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/javdb"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 	sloggin "github.com/samber/slog-gin"
 )
 
@@ -110,18 +109,14 @@ func errorMiddleware(logger *slog.Logger) gin.HandlerFunc {
 
 		status, _ := mapErrorStatus(err)
 		message := domain.PublicMessage(err)
-		if status == http.StatusNotFound && message == "内部服务错误" {
+		if status == http.StatusNotFound && message == domain.UnexpectedMessage {
 			message = "资源不存在"
 		}
 
 		body := gin.H{"error": message}
 		switch {
-		case errors.Is(err, pan.ErrUnauthorized):
-			body["code"] = "PAN_UNAUTHORIZED"
-		case errors.Is(err, drive.ErrMediaDirectoryRequired):
-			body["code"] = "PAN_DIRECTORY_REQUIRED"
-		case errors.Is(err, drive.ErrSourceChanged):
-			body["code"] = "PAN_SOURCE_CHANGED"
+		case errors.Is(err, storage.ErrSourceChanged):
+			body["code"] = "STORAGE_SOURCE_CHANGED"
 		case errors.Is(err, javdb.ErrLoginRequired):
 			body["code"] = "JAVDB_LOGIN_REQUIRED"
 		}

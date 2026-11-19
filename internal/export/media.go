@@ -11,13 +11,13 @@ import (
 
 	"github.com/ppxb/miyabi/internal/atomicfile"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 // WriteMedia writes artwork, NFO, then STRM files and reports whether any output changed.
 // Compare each output independently so repairing one missing sidecar does not
 // touch complete files or trigger unnecessary media-server file events.
-func WriteMedia(cfg Config, code string, doc nfo.Movie, videos []pan.File, poster, fanart []byte) (bool, error) {
+func WriteMedia(cfg Config, code string, doc nfo.Movie, videos []storage.File, poster, fanart []byte) (bool, error) {
 	if err := cfg.Validate(); err != nil {
 		return false, err
 	}
@@ -76,14 +76,14 @@ func WriteMedia(cfg Config, code string, doc nfo.Movie, videos []pan.File, poste
 	if len(videos) == 1 {
 		strmName := stem + ".strm"
 		expectedSTRMs[strmName] = true
-		if err := write(strmName, STRMContent(cfg.PublicURL, videos[0].ID, cfg.STRMToken)); err != nil {
+		if err := write(strmName, STRMContent(cfg.PublicURL, PathEscapeID(videos[0].ID), cfg.STRMToken)); err != nil {
 			return changed, fmt.Errorf("write strm file: %w", err)
 		}
 	} else if len(videos) > 1 {
 		for i, v := range videos {
 			strmName := fmt.Sprintf("%s-cd%d.strm", stem, i+1)
 			expectedSTRMs[strmName] = true
-			if err := write(strmName, STRMContent(cfg.PublicURL, v.ID, cfg.STRMToken)); err != nil {
+			if err := write(strmName, STRMContent(cfg.PublicURL, PathEscapeID(v.ID), cfg.STRMToken)); err != nil {
 				return changed, fmt.Errorf("write strm file: %w", err)
 			}
 		}
@@ -147,8 +147,8 @@ func isDigit(b byte) bool {
 }
 
 // sortFiles sorts video files by Name using natural sort order.
-func sortFiles(videos []pan.File) {
-	slices.SortFunc(videos, func(a, b pan.File) int {
+func sortFiles(videos []storage.File) {
+	slices.SortFunc(videos, func(a, b storage.File) int {
 		if c := naturalCompare(a.Name, b.Name); c != 0 {
 			return c
 		}

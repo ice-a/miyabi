@@ -124,8 +124,8 @@ export function useAddSubscription() {
           item.kind === 'actor'
             ? '每天检查一次新作，未发售作品会自动加入影片订阅。'
             : item.auto_download
-              ? '出现符合偏好的磁力后会自动加入 115。'
-              : '出现磁力后可在订阅页手动入库。'
+              ? '出现符合偏好的磁力后会自动记录，副本在订阅页可见。'
+              : '出现磁力后会记录在订阅页，供你复制下载。'
       })
     },
     meta: { errorTitle: '订阅失败' }

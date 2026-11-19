@@ -6,15 +6,16 @@ import (
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/ent"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func TestVideoFingerprintDeterministic(t *testing.T) {
-	files1 := []pan.File{
+	files1 := []storage.File{
 		{ID: "1", ParentID: "p1", Name: "part1.mp4", SHA1: "aaaa", Size: 1000},
 		{ID: "2", ParentID: "p1", Name: "part2.mp4", SHA1: "bbbb", Size: 2000},
 	}
-	files2 := []pan.File{
+	files2 := []storage.File{
 		{ID: "2", ParentID: "p1", Name: "part2.mp4", SHA1: "bbbb", Size: 2000},
 		{ID: "1", ParentID: "p1", Name: "part1.mp4", SHA1: "aaaa", Size: 1000},
 	}
@@ -26,7 +27,7 @@ func TestVideoFingerprintDeterministic(t *testing.T) {
 }
 
 func TestSnapshotMatches(t *testing.T) {
-	video := pan.File{ID: "v1", ParentID: "dir-1", Name: "ABP-001.mp4", SHA1: "sha-video", Size: 1 << 30}
+	video := storage.File{ID: "v1", ParentID: "dir-1", Name: "ABP-001.mp4", SHA1: "sha-video", Size: 1 << 30}
 	source := domain.LibrarySource{AccountID: "account", Directory: domain.LibraryDirectory{ID: "root"}}
 	for _, tc := range []struct {
 		name   string
@@ -46,7 +47,7 @@ func TestSnapshotMatches(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			record := &ent.Movie{
-				MetadataSnapshot: &domain.MetadataSnapshot{AccountID: source.AccountID, DirectoryID: source.Directory.ID, Videos: VideoFingerprint([]pan.File{video}), PosterVersion: mediaimage.PosterVersion},
+				MetadataSnapshot: &domain.MetadataSnapshot{AccountID: source.AccountID, DirectoryID: source.Directory.ID, Videos: VideoFingerprint([]storage.File{video}), PosterVersion: mediaimage.PosterVersion},
 				Edges:            ent.MovieEdges{Files: []*ent.File{{FileID: video.ID, ParentID: video.ParentID, Name: video.Name, Sha1: video.SHA1, Size: video.Size}}},
 			}
 			if tc.change != nil {

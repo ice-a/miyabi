@@ -4,7 +4,7 @@ import (
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/export"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 // ExportLocalMovie repairs missing or changed outputs using saved metadata and artwork.
@@ -17,9 +17,9 @@ func ExportLocalMovie(embyDir, publicURL, strmToken string, record *ent.Movie, i
 	if err != nil {
 		return false, err
 	}
-	videos := make([]pan.File, 0, len(record.Edges.Files))
+	videos := make([]storage.File, 0, len(record.Edges.Files))
 	for _, f := range record.Edges.Files {
-		videos = append(videos, pan.File{ID: f.FileID, Name: f.Name, Size: f.Size, PickCode: f.PickCode})
+		videos = append(videos, storage.File{ID: f.FileID, Name: f.Name, Size: f.Size, PickCode: f.PickCode})
 	}
 	var posterBytes, fanartBytes []byte
 	artwork := MovieArtwork(record)

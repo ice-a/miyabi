@@ -15,7 +15,8 @@ const descriptions: Record<string, string> = {
   r18dev: '官方镜像目录，补充影片资料与封面',
   onepondo: '一本道官方资料与封面（仅日期式番号匹配时使用）',
   javdatabase: '英文社区数据库，番号直达详情，补充标题、演员、厂牌与标签',
-  codeav: '大型社区数据库，番号直达详情，资料与 DMM 图片较完整'
+  codeav: '大型社区数据库，番号直达详情，资料与 DMM 图片较完整',
+  missav: 'MissAV 社区目录，番号直达详情，补充标题、演员与封面'
 }
 
 export function ScrapingSection() {

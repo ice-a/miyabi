@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func TestWriteMedia_WritesSTRMLast(t *testing.T) {
@@ -18,7 +19,7 @@ func TestWriteMedia_WritesSTRMLast(t *testing.T) {
 		Code:  "SSIS-999",
 		Title: "Test Write Order",
 	}
-	videos := []pan.File{
+	videos := []storage.File{
 		{ID: "vid-1", Name: "SSIS-999.mp4"},
 	}
 	poster := []byte("poster data")
@@ -80,7 +81,7 @@ func TestNaturalCompare(t *testing.T) {
 }
 
 func TestSortFiles(t *testing.T) {
-	files := []pan.File{
+	files := []storage.File{
 		{ID: "3", Name: "SSIS-456-cd10.mp4"},
 		{ID: "2", Name: "SSIS-456-CD2.mp4"},
 		{ID: "1", Name: "SSIS-456-cd1.mp4"},
@@ -99,7 +100,7 @@ func TestWriteMedia_CleansObsoleteSTRM(t *testing.T) {
 	doc := nfo.Movie{Code: "MIDE-123", Title: "Clean Test"}
 
 	// Step 1: Export single video -> MIDE-123.strm
-	singleVideo := []pan.File{{ID: "v1", Name: "MIDE-123.mp4"}}
+	singleVideo := []storage.File{{ID: "v1", Name: "MIDE-123.mp4"}}
 	if _, err := WriteMedia(Config{EmbyDir: embyDir, PublicURL: "http://localhost:8080", STRMToken: "tok"}, "MIDE-123", doc, singleVideo, nil, nil); err != nil {
 		t.Fatalf("first export failed: %v", err)
 	}
@@ -110,7 +111,7 @@ func TestWriteMedia_CleansObsoleteSTRM(t *testing.T) {
 	}
 
 	// Step 2: Export two disc videos -> MIDE-123-cd1.strm, MIDE-123-cd2.strm. Old MIDE-123.strm should be removed.
-	twoVideos := []pan.File{
+	twoVideos := []storage.File{
 		{ID: "v1", Name: "MIDE-123-CD1.mp4"},
 		{ID: "v2", Name: "MIDE-123-CD2.mp4"},
 	}
@@ -150,7 +151,7 @@ func TestWriteMedia_MultiVideoOrder(t *testing.T) {
 	doc := nfo.Movie{Code: "STARS-001", Title: "Multi Order Test"}
 
 	// Pass videos in reverse order
-	videos := []pan.File{
+	videos := []storage.File{
 		{ID: "vid-part2", Name: "STARS-001-cd2.mp4"},
 		{ID: "vid-part1", Name: "STARS-001-cd1.mp4"},
 	}

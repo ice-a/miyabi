@@ -9,7 +9,7 @@ import (
 )
 
 func TestCreateSessionRegistersSourcesAndRelease(t *testing.T) {
-	service := &Service{sessions: make(map[string]*playSession), sessionTTL: time.Minute}
+	service := &Service{sessions: make(map[string]*playSession), sessionTTL: time.Minute, afterFunc: newTimer}
 	source := domain.LibrarySource{AccountID: "100", Directory: domain.LibraryDirectory{ID: "10"}}
 	result, err := service.createSession(source, []mediaSpec{
 		{address: "https://cdn.example/a.mp4", mediaType: "video/mp4", label: "原画"},
@@ -35,6 +35,8 @@ func TestCreateSessionRegistersSourcesAndRelease(t *testing.T) {
 		t.Fatal("session not released")
 	}
 }
+
+func newTimer(duration time.Duration, fn func()) sessTimer { return time.AfterFunc(duration, fn) }
 
 func TestResourceReportsEndedSession(t *testing.T) {
 	service := &Service{sessions: make(map[string]*playSession)}

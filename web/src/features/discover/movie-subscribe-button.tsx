@@ -47,7 +47,7 @@ export function MovieSubscribeButton({ movie }: { movie: DiscoverMovie }) {
         {waiting
           ? '已订阅，将持续检查符合偏好的磁力'
           : added
-            ? '已加入 115 离线下载'
+            ? '已匹配磁力'
             : subscription
               ? '重新订阅'
               : '订阅影片'}

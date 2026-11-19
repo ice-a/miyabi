@@ -7,18 +7,17 @@ import (
 	"strings"
 
 	"github.com/ppxb/miyabi/internal/codeid"
-	"github.com/ppxb/miyabi/internal/drive"
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 // findNFO selects a matching NFO according to priority:
 // 1. Exact filename match (e.g. STEM.nfo)
 // 2. Catalogue code equivalence match (e.g. 200GANA vs GANA)
 // 3. Sole NFO in an unshared/private folder
-func findNFO(code string, shared bool, files []pan.File) (pan.File, bool) {
+func findNFO(code string, shared bool, files []storage.File) (storage.File, bool) {
 	wanted := nfo.FileStem(code) + ".nfo"
-	var alias, candidate pan.File
+	var alias, candidate storage.File
 	aliasFound, candidates := false, 0
 	for _, entry := range files {
 		if entry.IsDirectory {
@@ -45,12 +44,12 @@ func findNFO(code string, shared bool, files []pan.File) (pan.File, bool) {
 	if !shared && candidates == 1 {
 		return candidate, true
 	}
-	return pan.File{}, false
+	return storage.File{}, false
 }
 
-// readNFO reads and decodes an NFO file from 115 storage.
-func readNFO(ctx context.Context, sess drive.Session, entry pan.File) (nfo.Movie, error) {
-	body, err := sess.Read(ctx, entry.PickCode, 2<<20)
+// readNFO reads and decodes an NFO file from the mounted directory.
+func readNFO(ctx context.Context, sess storage.Session, entry storage.File) (nfo.Movie, error) {
+	body, err := sess.Read(ctx, entry.ID, 2<<20)
 	if err != nil {
 		return nfo.Movie{}, fmt.Errorf("read %s: %w", entry.Name, err)
 	}

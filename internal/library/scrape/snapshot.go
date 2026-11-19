@@ -10,11 +10,11 @@ import (
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/ent"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
-	"github.com/ppxb/miyabi/internal/pan"
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 // VideoFingerprint computes a deterministic hash of a movie's video files.
-func VideoFingerprint(files []pan.File) string {
+func VideoFingerprint(files []storage.File) string {
 	parts := make([]string, 0, len(files))
 	for _, entry := range files {
 		parts = append(parts, fmt.Sprintf("%q %q %q %q %d", entry.ID, entry.ParentID, entry.Name, strings.ToUpper(entry.SHA1), entry.Size))
@@ -30,9 +30,9 @@ func SnapshotMatches(record *ent.Movie, source domain.LibrarySource) bool {
 	if snapshot == nil || snapshot.AccountID != source.AccountID || snapshot.DirectoryID != source.Directory.ID || snapshot.PosterVersion != mediaimage.PosterVersion {
 		return false
 	}
-	files := make([]pan.File, 0, len(record.Edges.Files))
+	files := make([]storage.File, 0, len(record.Edges.Files))
 	for _, entry := range record.Edges.Files {
-		files = append(files, pan.File{ID: entry.FileID, ParentID: entry.ParentID, Name: entry.Name, SHA1: entry.Sha1, Size: entry.Size})
+		files = append(files, storage.File{ID: entry.FileID, ParentID: entry.ParentID, Name: entry.Name, SHA1: entry.Sha1, Size: entry.Size})
 	}
 	return snapshot.Videos == VideoFingerprint(files)
 }

@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/ppxb/miyabi/internal/nfo"
-	"github.com/ppxb/miyabi/internal/pan"
+
+	"github.com/ppxb/miyabi/internal/storage"
 )
 
 func TestExportLocalMediaSingleVideo(t *testing.T) {
@@ -19,7 +20,7 @@ func TestExportLocalMediaSingleVideo(t *testing.T) {
 		Title: "Test Movie",
 	}
 
-	videos := []pan.File{
+	videos := []storage.File{
 		{ID: "video-101", Name: "IPX-123.mp4"},
 	}
 	poster := []byte("fake poster data")
@@ -77,7 +78,7 @@ func TestExportLocalMediaMultiVideo(t *testing.T) {
 		Title: "Two Disc Movie",
 	}
 
-	videos := []pan.File{
+	videos := []storage.File{
 		{ID: "video-cd1", Name: "SSIS-456-CD1.mp4"},
 		{ID: "video-cd2", Name: "SSIS-456-CD2.mp4"},
 	}
@@ -116,7 +117,7 @@ func TestExportLocalMediaMultiVideoUnsorted(t *testing.T) {
 	}
 
 	// Pass in reversed order: cd2 first, then cd1
-	videos := []pan.File{
+	videos := []storage.File{
 		{ID: "video-cd2", Name: "SSIS-456-CD2.mp4"},
 		{ID: "video-cd1", Name: "SSIS-456-CD1.mp4"},
 	}

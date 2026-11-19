@@ -13,6 +13,12 @@ func TestRemovedRoutesLeaveActiveWorkflowsRegistered(t *testing.T) {
 		"POST /api/auth/logout",
 		"POST /api/library/scan/local",
 		"GET /api/discover/movies/:id/offline",
+		"POST /api/discover/movies/:id/offline",
+		"GET /api/offline/tasks",
+		"POST /api/offline/tasks/:id/cancel",
+		"GET /api/pan/account",
+		"POST /api/pan/login",
+		"PUT /api/pan/directory",
 		"GET /api/javdb/route",
 		"PUT /api/javdb/route",
 		"POST /api/javdb/reselect",
@@ -24,8 +30,9 @@ func TestRemovedRoutesLeaveActiveWorkflowsRegistered(t *testing.T) {
 	for _, route := range []string{
 		"POST /api/auth/login",
 		"POST /api/library/scan",
-		"POST /api/discover/movies/:id/offline",
-		"GET /api/offline/tasks",
+		"GET /api/settings/storage",
+		"PUT /api/settings/storage",
+		"DELETE /api/settings/storage",
 	} {
 		if !routes[route] {
 			t.Errorf("active route removed: %s", route)

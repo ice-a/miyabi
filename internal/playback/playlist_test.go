@@ -13,8 +13,8 @@ func TestRewritePlaylistRegistersEveryResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	var resources []string
-	register := func(target *url.URL, playlist bool) (string, error) {
-		resources = append(resources, target.String())
+	register := func(spec mediaSpec) (string, error) {
+		resources = append(resources, spec.address)
 		return fmt.Sprintf("/api/play/session/stream/%d", len(resources)-1), nil
 	}
 	body := []byte(`#EXTM3U
@@ -54,7 +54,7 @@ segment-1.ts
 
 func TestRewritePlaylistRejectsInvalidURI(t *testing.T) {
 	base, _ := url.Parse("https://cdn.example/master.m3u8")
-	register := func(*url.URL, bool) (string, error) { return "", nil }
+	register := func(mediaSpec) (string, error) { return "", nil }
 	if _, err := rewritePlaylist([]byte("#EXTM3U\nhttp://[::1\n"), base, register); err == nil {
 		t.Fatal("expected invalid URI error")
 	}
