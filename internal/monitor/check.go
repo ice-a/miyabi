@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/ppxb/miyabi/internal/domain"
@@ -44,6 +45,7 @@ func (service *Service) Check(ctx context.Context) error {
 	}
 
 	cutoff := time.Now()
+	var hits []string
 	groups := []struct {
 		kind   subscription.Kind
 		status subscription.Status
@@ -76,7 +78,7 @@ func (service *Service) Check(ctx context.Context) error {
 					return err
 				}
 				if group.kind == subscription.KindMovie {
-					err = service.checkMovie(ctx, record, picker, cfg.CheckTime)
+					err = service.checkMovie(ctx, record, picker, cfg.CheckTime, &hits)
 				} else {
 					err = service.checkActor(ctx, record, cfg.CheckTime)
 				}
@@ -92,6 +94,7 @@ func (service *Service) Check(ctx context.Context) error {
 			break
 		}
 	}
+	service.notifyHits(ctx, cfg, hits, len(checkErrors))
 	return errors.Join(checkErrors...)
 }
 
@@ -113,7 +116,7 @@ func (service *Service) dueSubscriptions(ctx context.Context, kind subscription.
 	return records, nil
 }
 
-func (service *Service) checkMovie(ctx context.Context, record *ent.Subscription, picker *magnet.Picker, checkTime string) error {
+func (service *Service) checkMovie(ctx context.Context, record *ent.Subscription, picker *magnet.Picker, checkTime string, hits *[]string) error {
 	now := time.Now()
 	magnets, err := service.discover.CatalogueMagnets(ctx, record.TargetID)
 	if err != nil {
@@ -135,14 +138,55 @@ func (service *Service) checkMovie(ctx context.Context, record *ent.Subscription
 		return nil
 	}
 	// No cloud drive submits magnets on the user's behalf anymore: remember the
-	// pick so the user can grab it, and look again tomorrow.
-	if err := record.Update().SetHash(best.Hash).SetLastCheckedAt(now).SetNextCheckAt(nextDaily(now, checkTime)).
-		AddChecks(1).ClearError().Exec(ctx); err != nil && !ent.IsNotFound(err) {
+	// pick so the user can grab it, and look again tomorrow. A hash recorded
+	// through a manual magnet stays untouched — the user picked it.
+	update := record.Update().SetLastCheckedAt(now).SetNextCheckAt(nextDaily(now, checkTime)).
+		AddChecks(1).ClearError()
+	if record.Hash == "" {
+		update.SetHash(best.Hash)
+	}
+	if err := update.Exec(ctx); err != nil && !ent.IsNotFound(err) {
 		return fmt.Errorf("update subscription %d: %w", record.ID, err)
 	}
 	slog.InfoContext(ctx, "subscribed movie magnet found", "code", record.Code, "hash", best.Hash)
+	*hits = append(*hits, hitLine(record.Code, record.Title))
 	service.tasks.NotifyMonitorChanged()
 	return nil
+}
+
+// notifyHits pushes the daily check outcome to the configured channel. Hits
+// carry code and title; failures are counted only. Sending runs in the
+// background with its own timeout so the scheduler is never delayed, and a
+// failed delivery is logged without affecting the check result.
+func (service *Service) notifyHits(ctx context.Context, cfg Config, hits []string, failures int) {
+	if len(hits) == 0 || !cfg.Notification.Enabled {
+		return
+	}
+	message := fmt.Sprintf("命中 %d 部：\n%s", len(hits), strings.Join(hits, "\n"))
+	if failures > 0 {
+		message += fmt.Sprintf("\n失败 %d 项", failures)
+	}
+	go func() {
+		sendCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := cfg.Notification.Send(sendCtx, nil, "Miyabi 订阅磁力命中", message); err != nil {
+			slog.WarnContext(sendCtx, "send subscription notification failed", "error", err)
+		}
+	}()
+}
+
+const hitLineLimit = 80
+
+// hitLine renders one hit as "CODE Title", trimming long titles.
+func hitLine(code, title string) string {
+	line := strings.TrimSpace(code)
+	if name := strings.TrimSpace(title); name != "" {
+		if len([]rune(name)) > hitLineLimit {
+			name = string([]rune(name)[:hitLineLimit]) + "…"
+		}
+		line += " " + name
+	}
+	return line
 }
 
 func (service *Service) checkActor(ctx context.Context, record *ent.Subscription, checkTime string) error {

@@ -127,7 +127,8 @@ test('library cards play on activation instead of opening details', () => {
       rating: 0,
       actors: [],
       tags: [],
-      scrape_status: 'done'
+      scrape_status: 'done',
+      favorite: false
     },
     onPlay
   })

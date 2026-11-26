@@ -76,6 +76,9 @@ func (Movie) Fields() []ent.Field {
 		field.Enum("scrape_status").
 			Values("pending", "done", "failed").
 			Default("pending"),
+		field.Bool("favorite").
+			Default(false).
+			Comment("User-curated flag surfaced as a library filter."),
 	}
 }
 
@@ -83,6 +86,7 @@ func (Movie) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("canonical_code"),
 		index.Fields("created_at", "id"),
+		index.Fields("favorite"),
 	}
 }
 

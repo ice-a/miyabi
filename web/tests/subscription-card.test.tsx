@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { expect, test, vi } from 'vitest'
 
-import { type SubscriptionItem, useRemoveSubscription } from '@/api/subscriptions'
+import { type SubscriptionItem, useRemoveSubscription, useSetSubscriptionMagnet } from '@/api/subscriptions'
 import { MovieCard } from '@/components/movie'
 import { Button } from '@/components/ui/button'
 import { MovieDetailTrigger } from '@/features/movie-detail/detail-trigger'
@@ -16,7 +16,8 @@ import { SubscriptionCard } from '@/features/subscriptions/subscription-card'
 
 vi.mock('@/api/subscriptions', async importOriginal => ({
   ...(await importOriginal<typeof import('@/api/subscriptions')>()),
-  useRemoveSubscription: vi.fn()
+  useRemoveSubscription: vi.fn(),
+  useSetSubscriptionMagnet: vi.fn()
 }))
 
 const item: SubscriptionItem = {
@@ -51,6 +52,10 @@ function cardState(selecting: boolean, disabled = false) {
     isPending: false,
     mutate: remove
   } as unknown as ReturnType<typeof useRemoveSubscription>)
+  vi.mocked(useSetSubscriptionMagnet).mockReturnValue({
+    isPending: false,
+    mutate: vi.fn()
+  } as unknown as ReturnType<typeof useSetSubscriptionMagnet>)
   const onSelect = vi.fn()
   const tree = SubscriptionCard({ item, selecting, disabled, selected: false, onSelect })
   const path = findPath(tree, MovieCard)

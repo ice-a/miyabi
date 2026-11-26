@@ -19,6 +19,7 @@ var (
 		{Name: "name_zht", Type: field.TypeString, Nullable: true},
 		{Name: "gender", Type: field.TypeEnum, Enums: []string{"female", "male", "unknown"}, Default: "unknown"},
 		{Name: "avatar", Type: field.TypeString, Nullable: true},
+		{Name: "aliases", Type: field.TypeJSON, Nullable: true},
 	}
 	// ActorsTable holds the schema information for the "actors" table.
 	ActorsTable = &schema.Table{
@@ -147,6 +148,7 @@ var (
 		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
 		{Name: "metadata_snapshot", Type: field.TypeJSON, Nullable: true},
 		{Name: "scrape_status", Type: field.TypeEnum, Enums: []string{"pending", "done", "failed"}, Default: "pending"},
+		{Name: "favorite", Type: field.TypeBool, Default: false},
 	}
 	// MoviesTable holds the schema information for the "movies" table.
 	MoviesTable = &schema.Table{
@@ -163,6 +165,11 @@ var (
 				Name:    "movie_created_at_id",
 				Unique:  false,
 				Columns: []*schema.Column{MoviesColumns[1], MoviesColumns[0]},
+			},
+			{
+				Name:    "movie_favorite",
+				Unique:  false,
+				Columns: []*schema.Column{MoviesColumns[23]},
 			},
 		},
 	}
@@ -236,9 +243,10 @@ var (
 		{Name: "release_date", Type: field.TypeString, Default: ""},
 		{Name: "origin_id", Type: field.TypeInt, Nullable: true},
 		{Name: "auto_download", Type: field.TypeBool, Default: true},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"waiting", "added", "stale", "active", "paused"}, Default: "waiting"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"waiting", "stale", "active", "paused"}, Default: "waiting"},
 		{Name: "cursor", Type: field.TypeString, Default: ""},
 		{Name: "hash", Type: field.TypeString, Default: ""},
+		{Name: "magnet", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "task_id", Type: field.TypeInt, Nullable: true},
 		{Name: "next_check_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_checked_at", Type: field.TypeTime, Nullable: true},
@@ -259,7 +267,7 @@ var (
 			{
 				Name:    "subscription_status_next_check_at",
 				Unique:  false,
-				Columns: []*schema.Column{SubscriptionsColumns[11], SubscriptionsColumns[15]},
+				Columns: []*schema.Column{SubscriptionsColumns[11], SubscriptionsColumns[16]},
 			},
 		},
 	}

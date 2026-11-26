@@ -80,7 +80,7 @@ test.each([
         id: i + 1,
         kind: targetKind,
         target_id: `${targetKind}-${i + 1}`,
-        status: targetKind === 'actor' ? 'active' : i % 2 === 0 ? 'waiting' : 'added'
+        status: targetKind === 'actor' ? 'active' : i % 2 === 0 ? 'waiting' : 'stale'
       }
     })
     const fetch = vi

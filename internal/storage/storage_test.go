@@ -100,6 +100,21 @@ func TestByteRangeSuffixAndUnsatisfiable(t *testing.T) {
 	}
 }
 
+func TestDiskSpaceReportsMountedVolume(t *testing.T) {
+	dir := t.TempDir()
+	service := &Service{root: dir}
+	usage, err := service.DiskSpace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if usage == nil || usage.TotalBytes == 0 || usage.FreeBytes > usage.TotalBytes || usage.UsedBytes != usage.TotalBytes-usage.FreeBytes {
+		t.Fatalf("implausible disk usage: %#v", usage)
+	}
+	if _, err := (&Service{root: ""}).DiskSpace(); err != nil {
+		t.Fatalf("unmounted service should report no usage, got %v", err)
+	}
+}
+
 func TestMountRejectsMissingDirectory(t *testing.T) {
 	dir := t.TempDir()
 	store, err := database.Open(context.Background(), t.TempDir())

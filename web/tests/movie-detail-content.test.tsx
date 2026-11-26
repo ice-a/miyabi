@@ -13,7 +13,11 @@ vi.mock('@/api/discover', () => ({
   useResolveDiscoverMovie: vi.fn()
 }))
 vi.mock('@/api/browse-history', () => ({ useRecordMovieView: vi.fn() }))
-vi.mock('@/api/library', () => ({ useLibraryMovie: vi.fn() }))
+vi.mock('@/api/library', () => ({
+  useLibraryMovie: vi.fn(),
+  useSetLibraryFavorite: vi.fn(() => ({ isPending: false, mutate: vi.fn(), reset: vi.fn() })),
+  useLibrarySimilar: vi.fn(() => ({ isPending: false, data: [] }))
+}))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -56,6 +60,7 @@ test('saved library metadata renders without a JavDB identity or lookup', () => 
       actor_movies: [],
       related_movies: [],
       scrape_status: 'done',
+      favorite: false,
       zone: 'censored'
     } satisfies LibraryMovieDetail,
     isPending: false

@@ -61,6 +61,9 @@ type Actor struct {
 	Gender   string `xml:"gender,omitempty" json:"gender"`
 	// Actor images are uploaded by Miyabi after decoding, not fetched by Emby.
 	Thumb string `xml:"miyabi_avatar,omitempty" json:"thumb"`
+	// Aliases keeps alternate spellings observed for the same person; NFO
+	// authors may also maintain them by hand with repeated <alias> children.
+	Aliases []string `xml:"alias,omitempty" json:"aliases,omitempty"`
 }
 
 // Read ordinary NFO thumbnails as well as Miyabi's preserved source URL.

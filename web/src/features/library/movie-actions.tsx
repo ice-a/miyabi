@@ -1,8 +1,12 @@
-import { PencilIcon, RefreshCwIcon } from 'lucide-react'
+import { PencilIcon, RefreshCwIcon, StarIcon, StarOffIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { describeApiError } from '@/api/client'
-import { useRescrapeLibraryMovie, type LibraryMovie } from '@/api/library'
+import {
+  useRescrapeLibraryMovie,
+  useSetLibraryFavorite,
+  type LibraryMovie
+} from '@/api/library'
 import { InlineError } from '@/components/error-state'
 import { Button } from '@/components/ui/button'
 import { ContextMenuContent, ContextMenuItem } from '@/components/ui/context-menu'
@@ -29,12 +33,29 @@ export function LibraryMovieActions({
   const [correcting, setCorrecting] = useState(false)
   const [code, setCode] = useState(movie.code)
   const scrape = useRescrapeLibraryMovie(movie.id)
+  const favorite = useSetLibraryFavorite(movie.id)
   const notifyScan = useNotifyScanTask()
   const busy = disabled || scrape.isPending
 
   return (
     <>
       <ContextMenuContent>
+        <ContextMenuItem
+          disabled={favorite.isPending}
+          onClick={() =>
+            favorite.mutate(!movie.favorite, {
+              onError: error =>
+                notifyTaskError(
+                  `movie:${movie.id}:favorite-error`,
+                  movie.favorite ? '取消收藏失败' : '收藏失败',
+                  describeApiError(error)
+                )
+            })
+          }
+        >
+          {movie.favorite ? <StarOffIcon /> : <StarIcon />}
+          {movie.favorite ? '取消收藏' : '收藏'}
+        </ContextMenuItem>
         <ContextMenuItem
           disabled={busy}
           onClick={() =>

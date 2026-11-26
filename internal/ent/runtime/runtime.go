@@ -194,6 +194,10 @@ func init() {
 	movieDescFanarts := movieFields[16].Descriptor()
 	// movie.DefaultFanarts holds the default value on creation for the fanarts field.
 	movie.DefaultFanarts = movieDescFanarts.Default.(func() []string)
+	// movieDescFavorite is the schema descriptor for favorite field.
+	movieDescFavorite := movieFields[20].Descriptor()
+	// movie.DefaultFavorite holds the default value on creation for the favorite field.
+	movie.DefaultFavorite = movieDescFavorite.Default.(bool)
 	offlinedownloadMixin := schema.OfflineDownload{}.Mixin()
 	offlinedownloadMixinFields0 := offlinedownloadMixin[0].Fields()
 	_ = offlinedownloadMixinFields0
@@ -322,7 +326,7 @@ func init() {
 	// subscription.DefaultHash holds the default value on creation for the hash field.
 	subscription.DefaultHash = subscriptionDescHash.Default.(string)
 	// subscriptionDescChecks is the schema descriptor for checks field.
-	subscriptionDescChecks := subscriptionFields[14].Descriptor()
+	subscriptionDescChecks := subscriptionFields[15].Descriptor()
 	// subscription.DefaultChecks holds the default value on creation for the checks field.
 	subscription.DefaultChecks = subscriptionDescChecks.Default.(int)
 	// subscription.ChecksValidator is a validator for the "checks" field. It is called by the builders before save.

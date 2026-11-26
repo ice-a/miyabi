@@ -69,6 +69,8 @@ type ActorMutation struct {
 	name_zht      *string
 	gender        *actor.Gender
 	avatar        *string
+	aliases       *[]string
+	appendaliases []string
 	clearedFields map[string]struct{}
 	movies        map[int]struct{}
 	removedmovies map[int]struct{}
@@ -490,6 +492,71 @@ func (m *ActorMutation) ResetAvatar() {
 	delete(m.clearedFields, actor.FieldAvatar)
 }
 
+// SetAliases sets the "aliases" field.
+func (m *ActorMutation) SetAliases(s []string) {
+	m.aliases = &s
+	m.appendaliases = nil
+}
+
+// Aliases returns the value of the "aliases" field in the mutation.
+func (m *ActorMutation) Aliases() (r []string, exists bool) {
+	v := m.aliases
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAliases returns the old "aliases" field's value of the Actor entity.
+// If the Actor object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ActorMutation) OldAliases(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAliases is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAliases requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAliases: %w", err)
+	}
+	return oldValue.Aliases, nil
+}
+
+// AppendAliases adds s to the "aliases" field.
+func (m *ActorMutation) AppendAliases(s []string) {
+	m.appendaliases = append(m.appendaliases, s...)
+}
+
+// AppendedAliases returns the list of values that were appended to the "aliases" field in this mutation.
+func (m *ActorMutation) AppendedAliases() ([]string, bool) {
+	if len(m.appendaliases) == 0 {
+		return nil, false
+	}
+	return m.appendaliases, true
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (m *ActorMutation) ClearAliases() {
+	m.aliases = nil
+	m.appendaliases = nil
+	m.clearedFields[actor.FieldAliases] = struct{}{}
+}
+
+// AliasesCleared returns if the "aliases" field was cleared in this mutation.
+func (m *ActorMutation) AliasesCleared() bool {
+	_, ok := m.clearedFields[actor.FieldAliases]
+	return ok
+}
+
+// ResetAliases resets all changes to the "aliases" field.
+func (m *ActorMutation) ResetAliases() {
+	m.aliases = nil
+	m.appendaliases = nil
+	delete(m.clearedFields, actor.FieldAliases)
+}
+
 // AddMovieIDs adds the "movies" edge to the Movie entity by ids.
 func (m *ActorMutation) AddMovieIDs(ids ...int) {
 	if m.movies == nil {
@@ -578,7 +645,7 @@ func (m *ActorMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ActorMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.created_at != nil {
 		fields = append(fields, actor.FieldCreatedAt)
 	}
@@ -602,6 +669,9 @@ func (m *ActorMutation) Fields() []string {
 	}
 	if m.avatar != nil {
 		fields = append(fields, actor.FieldAvatar)
+	}
+	if m.aliases != nil {
+		fields = append(fields, actor.FieldAliases)
 	}
 	return fields
 }
@@ -627,6 +697,8 @@ func (m *ActorMutation) Field(name string) (ent.Value, bool) {
 		return m.Gender()
 	case actor.FieldAvatar:
 		return m.Avatar()
+	case actor.FieldAliases:
+		return m.Aliases()
 	}
 	return nil, false
 }
@@ -652,6 +724,8 @@ func (m *ActorMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldGender(ctx)
 	case actor.FieldAvatar:
 		return m.OldAvatar(ctx)
+	case actor.FieldAliases:
+		return m.OldAliases(ctx)
 	}
 	return nil, fmt.Errorf("unknown Actor field %s", name)
 }
@@ -717,6 +791,13 @@ func (m *ActorMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAvatar(v)
 		return nil
+	case actor.FieldAliases:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAliases(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Actor field %s", name)
 }
@@ -753,6 +834,9 @@ func (m *ActorMutation) ClearedFields() []string {
 	if m.FieldCleared(actor.FieldAvatar) {
 		fields = append(fields, actor.FieldAvatar)
 	}
+	if m.FieldCleared(actor.FieldAliases) {
+		fields = append(fields, actor.FieldAliases)
+	}
 	return fields
 }
 
@@ -772,6 +856,9 @@ func (m *ActorMutation) ClearField(name string) error {
 		return nil
 	case actor.FieldAvatar:
 		m.ClearAvatar()
+		return nil
+	case actor.FieldAliases:
+		m.ClearAliases()
 		return nil
 	}
 	return fmt.Errorf("unknown Actor nullable field %s", name)
@@ -804,6 +891,9 @@ func (m *ActorMutation) ResetField(name string) error {
 		return nil
 	case actor.FieldAvatar:
 		m.ResetAvatar()
+		return nil
+	case actor.FieldAliases:
+		m.ResetAliases()
 		return nil
 	}
 	return fmt.Errorf("unknown Actor field %s", name)
@@ -3326,6 +3416,7 @@ type MovieMutation struct {
 	metadata          **nfo.Movie
 	metadata_snapshot **domain.MetadataSnapshot
 	scrape_status     *movie.ScrapeStatus
+	favorite          *bool
 	clearedFields     map[string]struct{}
 	actors            map[int]struct{}
 	removedactors     map[int]struct{}
@@ -4473,6 +4564,42 @@ func (m *MovieMutation) ResetScrapeStatus() {
 	m.scrape_status = nil
 }
 
+// SetFavorite sets the "favorite" field.
+func (m *MovieMutation) SetFavorite(b bool) {
+	m.favorite = &b
+}
+
+// Favorite returns the value of the "favorite" field in the mutation.
+func (m *MovieMutation) Favorite() (r bool, exists bool) {
+	v := m.favorite
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFavorite returns the old "favorite" field's value of the Movie entity.
+// If the Movie object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MovieMutation) OldFavorite(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFavorite is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFavorite requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFavorite: %w", err)
+	}
+	return oldValue.Favorite, nil
+}
+
+// ResetFavorite resets all changes to the "favorite" field.
+func (m *MovieMutation) ResetFavorite() {
+	m.favorite = nil
+}
+
 // AddActorIDs adds the "actors" edge to the Actor entity by ids.
 func (m *MovieMutation) AddActorIDs(ids ...int) {
 	if m.actors == nil {
@@ -4723,7 +4850,7 @@ func (m *MovieMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MovieMutation) Fields() []string {
-	fields := make([]string, 0, 22)
+	fields := make([]string, 0, 23)
 	if m.created_at != nil {
 		fields = append(fields, movie.FieldCreatedAt)
 	}
@@ -4790,6 +4917,9 @@ func (m *MovieMutation) Fields() []string {
 	if m.scrape_status != nil {
 		fields = append(fields, movie.FieldScrapeStatus)
 	}
+	if m.favorite != nil {
+		fields = append(fields, movie.FieldFavorite)
+	}
 	return fields
 }
 
@@ -4842,6 +4972,8 @@ func (m *MovieMutation) Field(name string) (ent.Value, bool) {
 		return m.MetadataSnapshot()
 	case movie.FieldScrapeStatus:
 		return m.ScrapeStatus()
+	case movie.FieldFavorite:
+		return m.Favorite()
 	}
 	return nil, false
 }
@@ -4895,6 +5027,8 @@ func (m *MovieMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldMetadataSnapshot(ctx)
 	case movie.FieldScrapeStatus:
 		return m.OldScrapeStatus(ctx)
+	case movie.FieldFavorite:
+		return m.OldFavorite(ctx)
 	}
 	return nil, fmt.Errorf("unknown Movie field %s", name)
 }
@@ -5057,6 +5191,13 @@ func (m *MovieMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetScrapeStatus(v)
+		return nil
+	case movie.FieldFavorite:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFavorite(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Movie field %s", name)
@@ -5286,6 +5427,9 @@ func (m *MovieMutation) ResetField(name string) error {
 		return nil
 	case movie.FieldScrapeStatus:
 		m.ResetScrapeStatus()
+		return nil
+	case movie.FieldFavorite:
+		m.ResetFavorite()
 		return nil
 	}
 	return fmt.Errorf("unknown Movie field %s", name)
@@ -7239,6 +7383,7 @@ type SubscriptionMutation struct {
 	status          *subscription.Status
 	cursor          *string
 	hash            *string
+	magnet          *string
 	task_id         *int
 	addtask_id      *int
 	next_check_at   *time.Time
@@ -7852,6 +7997,55 @@ func (m *SubscriptionMutation) ResetHash() {
 	m.hash = nil
 }
 
+// SetMagnet sets the "magnet" field.
+func (m *SubscriptionMutation) SetMagnet(s string) {
+	m.magnet = &s
+}
+
+// Magnet returns the value of the "magnet" field in the mutation.
+func (m *SubscriptionMutation) Magnet() (r string, exists bool) {
+	v := m.magnet
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMagnet returns the old "magnet" field's value of the Subscription entity.
+// If the Subscription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionMutation) OldMagnet(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMagnet is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMagnet requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMagnet: %w", err)
+	}
+	return oldValue.Magnet, nil
+}
+
+// ClearMagnet clears the value of the "magnet" field.
+func (m *SubscriptionMutation) ClearMagnet() {
+	m.magnet = nil
+	m.clearedFields[subscription.FieldMagnet] = struct{}{}
+}
+
+// MagnetCleared returns if the "magnet" field was cleared in this mutation.
+func (m *SubscriptionMutation) MagnetCleared() bool {
+	_, ok := m.clearedFields[subscription.FieldMagnet]
+	return ok
+}
+
+// ResetMagnet resets all changes to the "magnet" field.
+func (m *SubscriptionMutation) ResetMagnet() {
+	m.magnet = nil
+	delete(m.clearedFields, subscription.FieldMagnet)
+}
+
 // SetTaskID sets the "task_id" field.
 func (m *SubscriptionMutation) SetTaskID(i int) {
 	m.task_id = &i
@@ -8159,7 +8353,7 @@ func (m *SubscriptionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SubscriptionMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.created_at != nil {
 		fields = append(fields, subscription.FieldCreatedAt)
 	}
@@ -8198,6 +8392,9 @@ func (m *SubscriptionMutation) Fields() []string {
 	}
 	if m.hash != nil {
 		fields = append(fields, subscription.FieldHash)
+	}
+	if m.magnet != nil {
+		fields = append(fields, subscription.FieldMagnet)
 	}
 	if m.task_id != nil {
 		fields = append(fields, subscription.FieldTaskID)
@@ -8248,6 +8445,8 @@ func (m *SubscriptionMutation) Field(name string) (ent.Value, bool) {
 		return m.Cursor()
 	case subscription.FieldHash:
 		return m.Hash()
+	case subscription.FieldMagnet:
+		return m.Magnet()
 	case subscription.FieldTaskID:
 		return m.TaskID()
 	case subscription.FieldNextCheckAt:
@@ -8293,6 +8492,8 @@ func (m *SubscriptionMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCursor(ctx)
 	case subscription.FieldHash:
 		return m.OldHash(ctx)
+	case subscription.FieldMagnet:
+		return m.OldMagnet(ctx)
 	case subscription.FieldTaskID:
 		return m.OldTaskID(ctx)
 	case subscription.FieldNextCheckAt:
@@ -8403,6 +8604,13 @@ func (m *SubscriptionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetHash(v)
 		return nil
+	case subscription.FieldMagnet:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMagnet(v)
+		return nil
 	case subscription.FieldTaskID:
 		v, ok := value.(int)
 		if !ok {
@@ -8510,6 +8718,9 @@ func (m *SubscriptionMutation) ClearedFields() []string {
 	if m.FieldCleared(subscription.FieldOriginID) {
 		fields = append(fields, subscription.FieldOriginID)
 	}
+	if m.FieldCleared(subscription.FieldMagnet) {
+		fields = append(fields, subscription.FieldMagnet)
+	}
 	if m.FieldCleared(subscription.FieldTaskID) {
 		fields = append(fields, subscription.FieldTaskID)
 	}
@@ -8538,6 +8749,9 @@ func (m *SubscriptionMutation) ClearField(name string) error {
 	switch name {
 	case subscription.FieldOriginID:
 		m.ClearOriginID()
+		return nil
+	case subscription.FieldMagnet:
+		m.ClearMagnet()
 		return nil
 	case subscription.FieldTaskID:
 		m.ClearTaskID()
@@ -8597,6 +8811,9 @@ func (m *SubscriptionMutation) ResetField(name string) error {
 		return nil
 	case subscription.FieldHash:
 		m.ResetHash()
+		return nil
+	case subscription.FieldMagnet:
+		m.ResetMagnet()
 		return nil
 	case subscription.FieldTaskID:
 		m.ResetTaskID()

@@ -40,6 +40,8 @@ const (
 	FieldCursor = "cursor"
 	// FieldHash holds the string denoting the hash field in the database.
 	FieldHash = "hash"
+	// FieldMagnet holds the string denoting the magnet field in the database.
+	FieldMagnet = "magnet"
 	// FieldTaskID holds the string denoting the task_id field in the database.
 	FieldTaskID = "task_id"
 	// FieldNextCheckAt holds the string denoting the next_check_at field in the database.
@@ -70,6 +72,7 @@ var Columns = []string{
 	FieldStatus,
 	FieldCursor,
 	FieldHash,
+	FieldMagnet,
 	FieldTaskID,
 	FieldNextCheckAt,
 	FieldLastCheckedAt,
@@ -151,7 +154,6 @@ const DefaultStatus = StatusWaiting
 // Status values.
 const (
 	StatusWaiting Status = "waiting"
-	StatusAdded   Status = "added"
 	StatusStale   Status = "stale"
 	StatusActive  Status = "active"
 	StatusPaused  Status = "paused"
@@ -164,7 +166,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusWaiting, StatusAdded, StatusStale, StatusActive, StatusPaused:
+	case StatusWaiting, StatusStale, StatusActive, StatusPaused:
 		return nil
 	default:
 		return fmt.Errorf("subscription: invalid enum value for status field: %q", s)
@@ -242,6 +244,11 @@ func ByCursor(opts ...sql.OrderTermOption) OrderOption {
 // ByHash orders the results by the hash field.
 func ByHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldHash, opts...).ToFunc()
+}
+
+// ByMagnet orders the results by the magnet field.
+func ByMagnet(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMagnet, opts...).ToFunc()
 }
 
 // ByTaskID orders the results by the task_id field.

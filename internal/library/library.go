@@ -54,6 +54,7 @@ type Movie struct {
 	Actors       []Entity           `json:"actors"`
 	Tags         []Tag              `json:"tags"`
 	ScrapeStatus movie.ScrapeStatus `json:"scrape_status"`
+	Favorite     bool               `json:"favorite"`
 	// Source marks movies that have at least one file in a cloud source.
 	Source string `json:"source,omitempty"`
 }
@@ -325,15 +326,17 @@ func cloudFileScope(sources []domain.LibrarySource) predicate.File {
 	return file.Or(preds...)
 }
 
-func (s *Service) Movies(ctx context.Context, page, limit int) (Page, error) {
+func (s *Service) Movies(ctx context.Context, page, limit int, favoritesOnly bool) (Page, error) {
 	result := Page{Movies: []Movie{}, Page: page, Source: s.Source()}
 	sources := s.cloudSources(ctx)
 	scope := fileScope(sources)
 	cloudScope := cloudFileScope(sources)
+	totalScope := movie.HasFilesWith(scope)
+	if favoritesOnly {
+		totalScope = movie.And(totalScope, movie.Favorite(true))
+	}
 	var err error
-	result.Total, err = s.database.File.Query().Where(scope).Aggregate(func(selector *sql.Selector) string {
-		return sql.As("COUNT(DISTINCT "+selector.C(file.FieldMovieID)+")", "total")
-	}).Int(ctx)
+	result.Total, err = s.database.Movie.Query().Where(totalScope).Count(ctx)
 	if err != nil {
 		return result, fmt.Errorf("count library index: %w", err)
 	}
@@ -346,10 +349,10 @@ func (s *Service) Movies(ctx context.Context, page, limit int) (Page, error) {
 		// time and fall after them, ordered by their own creation time.
 		order = append([]movie.OrderOption{cloudAddedOrder(sources)}, order...)
 	}
-	records, err := s.database.Movie.Query().Where(movie.HasFilesWith(scope)).
+	records, err := s.database.Movie.Query().Where(totalScope).
 		Select(movie.FieldID, movie.FieldCode, movie.FieldTitle, movie.FieldJavdbID, movie.FieldCover, movie.FieldPoster,
 			movie.FieldFanarts, movie.FieldReleaseDate, movie.FieldDuration, movie.FieldRating,
-			movie.FieldMetadata,
+			movie.FieldMetadata, movie.FieldFavorite,
 			movie.FieldDirectorID, movie.FieldDirectorName, movie.FieldMakerID, movie.FieldMakerName,
 			movie.FieldSeriesID, movie.FieldSeriesName,
 			movie.FieldScrapeStatus).
@@ -385,6 +388,7 @@ func movieItem(record *ent.Movie) Movie {
 		Maker:    libraryEntity(record.MakerID, record.MakerName), Series: libraryEntity(record.SeriesID, record.SeriesName),
 		Actors: make([]Entity, 0, len(record.Edges.Actors)),
 		Tags:   make([]Tag, 0, len(record.Edges.Tags)), ScrapeStatus: record.ScrapeStatus,
+		Favorite: record.Favorite,
 	}
 	if record.ReleaseDate != nil {
 		item.ReleaseDate = record.ReleaseDate.Format(time.DateOnly)

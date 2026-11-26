@@ -91,7 +91,7 @@ func TestBatchCheckpointFailureStopsAndCanResumeWithoutDuplicateSubmission(t *te
 func TestBatchRetryKeepsOnlyFailedAndUnprocessedSubscriptions(t *testing.T) {
 	f, ctx := newFixture(t), t.Context()
 	payload := batchPayload{IDs: []int{1, 2, 3, 4, 5}, FailedIDs: []int{3, 3},
-		Batch: domain.SubscriptionBatch{Total: 5, Processed: 4, Submitted: 1, Waiting: 1, Failed: 2}}
+		Batch: domain.SubscriptionBatch{Total: 5, Processed: 4, Waiting: 1, Failed: 2}}
 	body, err := tasks.EncodePayload(payload)
 	if err != nil {
 		t.Fatal(err)

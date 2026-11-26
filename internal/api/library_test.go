@@ -15,6 +15,7 @@ import (
 type libraryPageStub struct {
 	LibraryManager
 	page, limit int
+	favorite    bool
 }
 
 type libraryRebuildStub struct {
@@ -101,8 +102,8 @@ func TestLibraryPreviewRoutesSavedSourceAndRejectsInvalidTargets(t *testing.T) {
 	}
 }
 
-func (stub *libraryPageStub) Movies(_ context.Context, page, limit int) (library.Page, error) {
-	stub.page, stub.limit = page, limit
+func (stub *libraryPageStub) Movies(_ context.Context, page, limit int, favorite bool) (library.Page, error) {
+	stub.page, stub.limit, stub.favorite = page, limit, favorite
 	return library.Page{Page: page, Movies: []library.Movie{}}, nil
 }
 

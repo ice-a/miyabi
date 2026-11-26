@@ -27,7 +27,7 @@ func TestEnqueueSingle(t *testing.T) {
 
 	f.discover.magnets["m1"] = []domain.Magnet{{Hash: "abc123", Name: "MOCK-m1", HasSubtitle: true, HD: true, Size: 1 << 30}}
 	found, err := f.service.EnqueueSingle(ctx, item.ID)
-	if err != nil || found.Hash != "abc123" || found.Status == subscription.StatusAdded {
+	if err != nil || found.Hash != "abc123" || found.Status != subscription.StatusWaiting {
 		t.Fatalf("with a magnet the subscription records the hash and keeps waiting: %#v %v", found, err)
 	}
 	if again, err := f.service.EnqueueSingle(ctx, item.ID); err != nil || again.Hash != "abc123" {
@@ -119,7 +119,7 @@ func TestBatchEnqueueTask(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch := payload.Batch
-	if batch.Total != 3 || batch.Processed != 3 || batch.Submitted != 0 || batch.Waiting != 2 || batch.Failed != 1 || len(batch.Failures) != 1 || row.Progress != 100 {
+	if batch.Total != 3 || batch.Processed != 3 || batch.Waiting != 2 || batch.Failed != 1 || len(batch.Failures) != 1 || row.Progress != 100 {
 		t.Fatalf("unexpected tally %+v progress=%d", batch, row.Progress)
 	}
 	if sub := f.client.Subscription.GetX(ctx, item1.ID); sub.Status != subscription.StatusWaiting || sub.Hash != "hash1" {
@@ -189,7 +189,7 @@ func TestBatchHandlerResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	batch := savedPayload.Batch
-	if batch.Total != 2 || batch.Processed != 2 || batch.Submitted != 0 || batch.Waiting != 2 || row.Progress != 100 {
+	if batch.Total != 2 || batch.Processed != 2 || batch.Waiting != 2 || row.Progress != 100 {
 		t.Fatalf("unexpected tally after resume %+v progress=%d", batch, row.Progress)
 	}
 	if sub := f.client.Subscription.GetX(ctx, item1.ID); sub.Status != subscription.StatusWaiting {

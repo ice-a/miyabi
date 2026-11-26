@@ -6,7 +6,6 @@ package domain
 type SubscriptionBatch struct {
 	Total     int                   `json:"total"`
 	Processed int                   `json:"processed"`
-	Submitted int                   `json:"submitted"`
 	Waiting   int                   `json:"waiting"`
 	Failed    int                   `json:"failed"`
 	Failures  []SubscriptionFailure `json:"failures,omitempty"`

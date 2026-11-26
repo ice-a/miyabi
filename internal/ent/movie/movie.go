@@ -60,6 +60,8 @@ const (
 	FieldMetadataSnapshot = "metadata_snapshot"
 	// FieldScrapeStatus holds the string denoting the scrape_status field in the database.
 	FieldScrapeStatus = "scrape_status"
+	// FieldFavorite holds the string denoting the favorite field in the database.
+	FieldFavorite = "favorite"
 	// EdgeActors holds the string denoting the actors edge name in mutations.
 	EdgeActors = "actors"
 	// EdgeTags holds the string denoting the tags edge name in mutations.
@@ -121,6 +123,7 @@ var Columns = []string{
 	FieldMetadata,
 	FieldMetadataSnapshot,
 	FieldScrapeStatus,
+	FieldFavorite,
 }
 
 var (
@@ -165,6 +168,8 @@ var (
 	DefaultTitle string
 	// DefaultFanarts holds the default value on creation for the "fanarts" field.
 	DefaultFanarts func() []string
+	// DefaultFavorite holds the default value on creation for the "favorite" field.
+	DefaultFavorite bool
 )
 
 // ScrapeStatus defines the type for the "scrape_status" enum field.
@@ -295,6 +300,11 @@ func ByPoster(opts ...sql.OrderTermOption) OrderOption {
 // ByScrapeStatus orders the results by the scrape_status field.
 func ByScrapeStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldScrapeStatus, opts...).ToFunc()
+}
+
+// ByFavorite orders the results by the favorite field.
+func ByFavorite(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFavorite, opts...).ToFunc()
 }
 
 // ByActorsCount orders the results by actors count.

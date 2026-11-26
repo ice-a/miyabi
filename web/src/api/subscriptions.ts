@@ -5,7 +5,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 
 export type SubscriptionKind = 'movie' | 'actor'
 
-export type SubscriptionStatus = 'waiting' | 'added' | 'stale' | 'active' | 'paused'
+export type SubscriptionStatus = 'waiting' | 'stale' | 'active' | 'paused'
 
 export type SubscriptionItem = {
   id: number
@@ -19,6 +19,7 @@ export type SubscriptionItem = {
   auto_download: boolean
   status: SubscriptionStatus
   hash?: string
+  magnet?: string
   task_id?: number
   next_check_at?: string
   last_checked_at?: string
@@ -147,6 +148,21 @@ export function useUpdateSubscription() {
       void queryClient.invalidateQueries({ queryKey: subscriptionKeys.all })
     },
     meta: { errorTitle: '更新订阅失败' }
+  })
+}
+
+export function useSetSubscriptionMagnet() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, magnet }: { id: number; magnet: string }) =>
+      apiPost<SubscriptionItem>(`/api/subscriptions/${id}/magnet`, { magnet }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.all })
+      toast.success('已记录磁力链', {
+        description: '订阅会继续等待磁力入库，可在卡片上随时复制。'
+      })
+    },
+    meta: { errorTitle: '记录磁力失败' }
   })
 }
 

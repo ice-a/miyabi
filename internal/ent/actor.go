@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -33,6 +34,8 @@ type Actor struct {
 	Gender actor.Gender `json:"gender,omitempty"`
 	// Avatar holds the value of the "avatar" field.
 	Avatar *string `json:"avatar,omitempty"`
+	// Aliases holds the value of the "aliases" field.
+	Aliases []string `json:"aliases,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ActorQuery when eager-loading is set.
 	Edges        ActorEdges `json:"edges"`
@@ -62,6 +65,8 @@ func (*Actor) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case actor.FieldAliases:
+			values[i] = new([]byte)
 		case actor.FieldID:
 			values[i] = new(sql.NullInt64)
 		case actor.FieldProvider, actor.FieldSourceID, actor.FieldName, actor.FieldNameZht, actor.FieldGender, actor.FieldAvatar:
@@ -139,6 +144,14 @@ func (_m *Actor) assignValues(columns []string, values []any) error {
 				_m.Avatar = new(string)
 				*_m.Avatar = value.String
 			}
+		case actor.FieldAliases:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field aliases", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Aliases); err != nil {
+					return fmt.Errorf("unmarshal field aliases: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -207,6 +220,9 @@ func (_m *Actor) String() string {
 		builder.WriteString("avatar=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("aliases=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Aliases))
 	builder.WriteByte(')')
 	return builder.String()
 }

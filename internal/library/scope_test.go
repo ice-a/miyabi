@@ -37,7 +37,7 @@ func TestMoviesAggregateConfiguredSources(t *testing.T) {
 	inOther := createMovie("ABP-002", "B", "20", "file-b")
 	inLocal := createMovie("ABP-003", domain.LocalAccountID, domain.LocalAccountID, "file-local")
 
-	page, err := lib.Movies(ctx, 1, 20)
+	page, err := lib.Movies(ctx, 1, 20, false)
 	if err != nil {
 		t.Fatal(err)
 	}

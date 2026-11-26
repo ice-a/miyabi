@@ -111,6 +111,12 @@ func (_c *ActorCreate) SetNillableAvatar(v *string) *ActorCreate {
 	return _c
 }
 
+// SetAliases sets the "aliases" field.
+func (_c *ActorCreate) SetAliases(v []string) *ActorCreate {
+	_c.mutation.SetAliases(v)
+	return _c
+}
+
 // AddMovieIDs adds the "movies" edge to the Movie entity by IDs.
 func (_c *ActorCreate) AddMovieIDs(ids ...int) *ActorCreate {
 	_c.mutation.AddMovieIDs(ids...)
@@ -273,6 +279,10 @@ func (_c *ActorCreate) createSpec() (*Actor, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Avatar(); ok {
 		_spec.SetField(actor.FieldAvatar, field.TypeString, value)
 		_node.Avatar = &value
+	}
+	if value, ok := _c.mutation.Aliases(); ok {
+		_spec.SetField(actor.FieldAliases, field.TypeJSON, value)
+		_node.Aliases = value
 	}
 	if nodes := _c.mutation.MoviesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -438,6 +448,24 @@ func (u *ActorUpsert) ClearAvatar() *ActorUpsert {
 	return u
 }
 
+// SetAliases sets the "aliases" field.
+func (u *ActorUpsert) SetAliases(v []string) *ActorUpsert {
+	u.Set(actor.FieldAliases, v)
+	return u
+}
+
+// UpdateAliases sets the "aliases" field to the value that was provided on create.
+func (u *ActorUpsert) UpdateAliases() *ActorUpsert {
+	u.SetExcluded(actor.FieldAliases)
+	return u
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (u *ActorUpsert) ClearAliases() *ActorUpsert {
+	u.SetNull(actor.FieldAliases)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -592,6 +620,27 @@ func (u *ActorUpsertOne) UpdateAvatar() *ActorUpsertOne {
 func (u *ActorUpsertOne) ClearAvatar() *ActorUpsertOne {
 	return u.Update(func(s *ActorUpsert) {
 		s.ClearAvatar()
+	})
+}
+
+// SetAliases sets the "aliases" field.
+func (u *ActorUpsertOne) SetAliases(v []string) *ActorUpsertOne {
+	return u.Update(func(s *ActorUpsert) {
+		s.SetAliases(v)
+	})
+}
+
+// UpdateAliases sets the "aliases" field to the value that was provided on create.
+func (u *ActorUpsertOne) UpdateAliases() *ActorUpsertOne {
+	return u.Update(func(s *ActorUpsert) {
+		s.UpdateAliases()
+	})
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (u *ActorUpsertOne) ClearAliases() *ActorUpsertOne {
+	return u.Update(func(s *ActorUpsert) {
+		s.ClearAliases()
 	})
 }
 
@@ -915,6 +964,27 @@ func (u *ActorUpsertBulk) UpdateAvatar() *ActorUpsertBulk {
 func (u *ActorUpsertBulk) ClearAvatar() *ActorUpsertBulk {
 	return u.Update(func(s *ActorUpsert) {
 		s.ClearAvatar()
+	})
+}
+
+// SetAliases sets the "aliases" field.
+func (u *ActorUpsertBulk) SetAliases(v []string) *ActorUpsertBulk {
+	return u.Update(func(s *ActorUpsert) {
+		s.SetAliases(v)
+	})
+}
+
+// UpdateAliases sets the "aliases" field to the value that was provided on create.
+func (u *ActorUpsertBulk) UpdateAliases() *ActorUpsertBulk {
+	return u.Update(func(s *ActorUpsert) {
+		s.UpdateAliases()
+	})
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (u *ActorUpsertBulk) ClearAliases() *ActorUpsertBulk {
+	return u.Update(func(s *ActorUpsert) {
+		s.ClearAliases()
 	})
 }
 

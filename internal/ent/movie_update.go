@@ -401,6 +401,20 @@ func (_u *MovieUpdate) SetNillableScrapeStatus(v *movie.ScrapeStatus) *MovieUpda
 	return _u
 }
 
+// SetFavorite sets the "favorite" field.
+func (_u *MovieUpdate) SetFavorite(v bool) *MovieUpdate {
+	_u.mutation.SetFavorite(v)
+	return _u
+}
+
+// SetNillableFavorite sets the "favorite" field if the given value is not nil.
+func (_u *MovieUpdate) SetNillableFavorite(v *bool) *MovieUpdate {
+	if v != nil {
+		_u.SetFavorite(*v)
+	}
+	return _u
+}
+
 // AddActorIDs adds the "actors" edge to the Actor entity by IDs.
 func (_u *MovieUpdate) AddActorIDs(ids ...int) *MovieUpdate {
 	_u.mutation.AddActorIDs(ids...)
@@ -734,6 +748,9 @@ func (_u *MovieUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.ScrapeStatus(); ok {
 		_spec.SetField(movie.FieldScrapeStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Favorite(); ok {
+		_spec.SetField(movie.FieldFavorite, field.TypeBool, value)
 	}
 	if _u.mutation.ActorsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1301,6 +1318,20 @@ func (_u *MovieUpdateOne) SetNillableScrapeStatus(v *movie.ScrapeStatus) *MovieU
 	return _u
 }
 
+// SetFavorite sets the "favorite" field.
+func (_u *MovieUpdateOne) SetFavorite(v bool) *MovieUpdateOne {
+	_u.mutation.SetFavorite(v)
+	return _u
+}
+
+// SetNillableFavorite sets the "favorite" field if the given value is not nil.
+func (_u *MovieUpdateOne) SetNillableFavorite(v *bool) *MovieUpdateOne {
+	if v != nil {
+		_u.SetFavorite(*v)
+	}
+	return _u
+}
+
 // AddActorIDs adds the "actors" edge to the Actor entity by IDs.
 func (_u *MovieUpdateOne) AddActorIDs(ids ...int) *MovieUpdateOne {
 	_u.mutation.AddActorIDs(ids...)
@@ -1664,6 +1695,9 @@ func (_u *MovieUpdateOne) sqlSave(ctx context.Context) (_node *Movie, err error)
 	}
 	if value, ok := _u.mutation.ScrapeStatus(); ok {
 		_spec.SetField(movie.FieldScrapeStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Favorite(); ok {
+		_spec.SetField(movie.FieldFavorite, field.TypeBool, value)
 	}
 	if _u.mutation.ActorsCleared() {
 		edge := &sqlgraph.EdgeSpec{

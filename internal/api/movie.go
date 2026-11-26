@@ -11,15 +11,21 @@ import (
 
 type LibraryManager interface {
 	ViewedManager
-	Movies(context.Context, int, int) (lib.Page, error)
+	Movies(context.Context, int, int, bool) (lib.Page, error)
 	TopRated(context.Context, int) ([]lib.Movie, error)
 	Movie(context.Context, int) (lib.MovieDetail, error)
+	Similar(context.Context, int) ([]lib.Movie, error)
 	Preview(context.Context, int, int) (domain.ImageCandidate, error)
 	StartScan(context.Context) (domain.TaskInfo, error)
 	StartRebuild(context.Context) (domain.TaskInfo, error)
 	StartIncrementalSync(context.Context) (int, error)
 	PendingCount(context.Context) (int, error)
 	RescrapeMovie(context.Context, int, string) (domain.TaskInfo, error)
+	SetFavorite(context.Context, int, bool) error
+	Health(context.Context) (lib.HealthReport, error)
+	Organize(context.Context) (lib.OrganizeReport, error)
+	ApplyOrganize(context.Context, []int) (lib.OrganizeApplyReport, error)
+	UndoOrganize(context.Context) (lib.OrganizeApplyReport, error)
 }
 
 func libraryMovieScrapeHandler(library LibraryManager) gin.HandlerFunc {
@@ -62,6 +68,40 @@ func libraryPendingHandler(library LibraryManager) gin.HandlerFunc {
 	}
 }
 
+func libraryHealthHandler(library LibraryManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		report, err := library.Health(c.Request.Context())
+		respond(c, report, err)
+	}
+}
+
+func libraryOrganizeHandler(library LibraryManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		report, err := library.Organize(c.Request.Context())
+		respond(c, report, err)
+	}
+}
+
+func libraryOrganizeApplyHandler(library LibraryManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		body, ok := bindJSON[struct {
+			FileIDs []int `json:"file_ids" binding:"required,min=1,max=100"`
+		}](c)
+		if !ok {
+			return
+		}
+		report, err := library.ApplyOrganize(c.Request.Context(), body.FileIDs)
+		respond(c, report, err)
+	}
+}
+
+func libraryOrganizeUndoHandler(library LibraryManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		report, err := library.UndoOrganize(c.Request.Context())
+		respond(c, report, err)
+	}
+}
+
 func libraryTopRatedHandler(library LibraryManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		query, ok := bindQuery[struct {
@@ -85,6 +125,19 @@ func libraryMovieHandler(library LibraryManager) gin.HandlerFunc {
 		}
 		detail, err := library.Movie(c.Request.Context(), uri.ID)
 		respond(c, detail, err)
+	}
+}
+
+func librarySimilarHandler(library LibraryManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uri, ok := bindURI[struct {
+			ID int `uri:"id" binding:"min=1"`
+		}](c)
+		if !ok {
+			return
+		}
+		movies, err := library.Similar(c.Request.Context(), uri.ID)
+		respond(c, movies, err)
 	}
 }
 
@@ -135,8 +188,9 @@ func libraryArtworkHandler(artwork ArtworkReader) gin.HandlerFunc {
 }
 
 type libraryPageQuery struct {
-	Page  int `form:"page,default=1" binding:"min=1"`
-	Limit int `form:"limit,default=20" binding:"min=1,max=100"`
+	Page     int  `form:"page,default=1" binding:"min=1"`
+	Limit    int  `form:"limit,default=20" binding:"min=1,max=100"`
+	Favorite bool `form:"favorite"`
 }
 
 func libraryMoviesHandler(library LibraryManager) gin.HandlerFunc {
@@ -145,8 +199,27 @@ func libraryMoviesHandler(library LibraryManager) gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		movies, err := library.Movies(c.Request.Context(), query.Page, query.Limit)
+		movies, err := library.Movies(c.Request.Context(), query.Page, query.Limit, query.Favorite)
 		respond(c, movies, err)
+	}
+}
+
+func libraryFavoriteHandler(library LibraryManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uri, ok := bindURI[struct {
+			ID int `uri:"id" binding:"min=1"`
+		}](c)
+		if !ok {
+			return
+		}
+		input, ok := bindJSON[struct {
+			Favorite *bool `json:"favorite" binding:"required"`
+		}](c)
+		if !ok {
+			return
+		}
+		err := library.SetFavorite(c.Request.Context(), uri.ID, *input.Favorite)
+		respond(c, gin.H{"favorite": *input.Favorite}, err)
 	}
 }
 

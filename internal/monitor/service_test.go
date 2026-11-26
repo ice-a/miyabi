@@ -103,12 +103,12 @@ func TestReAddingFinishedSubscriptionOnlyResetsForUsers(t *testing.T) {
 	if picked, err := f.service.EnqueueSingle(ctx, item.ID); err != nil || picked.Hash != "h1" {
 		t.Fatalf("EnqueueSingle: %#v %v", picked, err)
 	}
-	if _, err := f.client.Subscription.UpdateOneID(item.ID).SetStatus(subscription.StatusAdded).Save(ctx); err != nil {
+	if _, err := f.client.Subscription.UpdateOneID(item.ID).SetStatus(subscription.StatusStale).Save(ctx); err != nil {
 		t.Fatal(err)
 	}
 	spawned, err := f.service.addMovie(ctx, domain.MovieSummary{ID: "m1"}, AddMovieOptions{OriginID: ptr(99)})
-	if err != nil || spawned.ID != item.ID || spawned.Status != subscription.StatusAdded {
-		t.Fatalf("an actor-spawned add must leave an added subscription alone: %#v %v", spawned, err)
+	if err != nil || spawned.ID != item.ID || spawned.Status != subscription.StatusStale {
+		t.Fatalf("an actor-spawned add must leave a stale subscription alone: %#v %v", spawned, err)
 	}
 	rearmed, err := f.service.AddMovie(ctx, "m1", AddMovieOptions{})
 	if err != nil || rearmed.Status != subscription.StatusWaiting || rearmed.Hash != "" {

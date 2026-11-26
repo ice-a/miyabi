@@ -73,6 +73,20 @@ export function DataSection() {
         )}
       </SettingRow>
       <SettingRow
+        title="媒体目录磁盘"
+        description="媒体目录所在磁盘的占用情况"
+      >
+        {info.data?.media_disk ? (
+          <span className="text-sm font-medium tabular-nums">
+            已用 {formatSize(info.data.media_disk.used_bytes)} / 共{' '}
+            {formatSize(info.data.media_disk.total_bytes)}（剩余{' '}
+            {formatSize(info.data.media_disk.free_bytes)}）
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">未挂载媒体目录</span>
+        )}
+      </SettingRow>
+      <SettingRow
         title="图片缓存"
         description={
           cache

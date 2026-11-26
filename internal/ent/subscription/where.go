@@ -109,6 +109,11 @@ func Hash(v string) predicate.Subscription {
 	return predicate.Subscription(sql.FieldEQ(FieldHash, v))
 }
 
+// Magnet applies equality check predicate on the "magnet" field. It's identical to MagnetEQ.
+func Magnet(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldEQ(FieldMagnet, v))
+}
+
 // TaskID applies equality check predicate on the "task_id" field. It's identical to TaskIDEQ.
 func TaskID(v int) predicate.Subscription {
 	return predicate.Subscription(sql.FieldEQ(FieldTaskID, v))
@@ -767,6 +772,81 @@ func HashEqualFold(v string) predicate.Subscription {
 // HashContainsFold applies the ContainsFold predicate on the "hash" field.
 func HashContainsFold(v string) predicate.Subscription {
 	return predicate.Subscription(sql.FieldContainsFold(FieldHash, v))
+}
+
+// MagnetEQ applies the EQ predicate on the "magnet" field.
+func MagnetEQ(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldEQ(FieldMagnet, v))
+}
+
+// MagnetNEQ applies the NEQ predicate on the "magnet" field.
+func MagnetNEQ(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldNEQ(FieldMagnet, v))
+}
+
+// MagnetIn applies the In predicate on the "magnet" field.
+func MagnetIn(vs ...string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldIn(FieldMagnet, vs...))
+}
+
+// MagnetNotIn applies the NotIn predicate on the "magnet" field.
+func MagnetNotIn(vs ...string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldNotIn(FieldMagnet, vs...))
+}
+
+// MagnetGT applies the GT predicate on the "magnet" field.
+func MagnetGT(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldGT(FieldMagnet, v))
+}
+
+// MagnetGTE applies the GTE predicate on the "magnet" field.
+func MagnetGTE(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldGTE(FieldMagnet, v))
+}
+
+// MagnetLT applies the LT predicate on the "magnet" field.
+func MagnetLT(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldLT(FieldMagnet, v))
+}
+
+// MagnetLTE applies the LTE predicate on the "magnet" field.
+func MagnetLTE(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldLTE(FieldMagnet, v))
+}
+
+// MagnetContains applies the Contains predicate on the "magnet" field.
+func MagnetContains(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldContains(FieldMagnet, v))
+}
+
+// MagnetHasPrefix applies the HasPrefix predicate on the "magnet" field.
+func MagnetHasPrefix(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldHasPrefix(FieldMagnet, v))
+}
+
+// MagnetHasSuffix applies the HasSuffix predicate on the "magnet" field.
+func MagnetHasSuffix(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldHasSuffix(FieldMagnet, v))
+}
+
+// MagnetIsNil applies the IsNil predicate on the "magnet" field.
+func MagnetIsNil() predicate.Subscription {
+	return predicate.Subscription(sql.FieldIsNull(FieldMagnet))
+}
+
+// MagnetNotNil applies the NotNil predicate on the "magnet" field.
+func MagnetNotNil() predicate.Subscription {
+	return predicate.Subscription(sql.FieldNotNull(FieldMagnet))
+}
+
+// MagnetEqualFold applies the EqualFold predicate on the "magnet" field.
+func MagnetEqualFold(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldEqualFold(FieldMagnet, v))
+}
+
+// MagnetContainsFold applies the ContainsFold predicate on the "magnet" field.
+func MagnetContainsFold(v string) predicate.Subscription {
+	return predicate.Subscription(sql.FieldContainsFold(FieldMagnet, v))
 }
 
 // TaskIDEQ applies the EQ predicate on the "task_id" field.

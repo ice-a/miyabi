@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/ppxb/miyabi/internal/ent/movie"
 	"github.com/ppxb/miyabi/internal/ent/task"
 	mediaimage "github.com/ppxb/miyabi/internal/image"
+	"github.com/ppxb/miyabi/internal/storage"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
@@ -22,6 +24,9 @@ type Info struct {
 	DataDirectory     string                `json:"data_directory"`
 	DatabaseSizeBytes int64                 `json:"database_size_bytes"`
 	Cache             mediaimage.CacheStats `json:"cache"`
+	// MediaDisk reports the volume behind the mounted media directory; nil
+	// while no directory is mounted.
+	MediaDisk *storage.DiskUsage `json:"media_disk,omitempty"`
 }
 
 // ArtworkLocker excludes pruning while new images gain durable references.
@@ -35,14 +40,27 @@ type Service struct {
 	db        *ent.Client
 	images    *mediaimage.Cache
 	scrape    ArtworkLocker
+	mediaDisk func() (*storage.DiskUsage, error)
 }
 
-func New(directory string, db *ent.Client, images *mediaimage.Cache, scrapeSvc ArtworkLocker) (*Service, error) {
+func New(directory string, db *ent.Client, images *mediaimage.Cache, scrapeSvc ArtworkLocker, options ...Option) (*Service, error) {
 	absolute, err := filepath.Abs(directory)
 	if err != nil {
 		return nil, fmt.Errorf("resolve data directory: %w", err)
 	}
-	return &Service{directory: absolute, db: db, images: images, scrape: scrapeSvc}, nil
+	service := &Service{directory: absolute, db: db, images: images, scrape: scrapeSvc}
+	for _, option := range options {
+		option(service)
+	}
+	return service, nil
+}
+
+// Option customises optional maintenance integrations.
+type Option func(*Service)
+
+// WithMediaDisk reads the mounted media directory's volume statistics.
+func WithMediaDisk(reader func() (*storage.DiskUsage, error)) Option {
+	return func(service *Service) { service.mediaDisk = reader }
 }
 
 func (service *Service) Info(ctx context.Context) (Info, error) {
@@ -94,6 +112,16 @@ func (service *Service) info(ctx context.Context, retained map[string]bool) (Inf
 			return Info{}, errors.New("database path is not a regular file")
 		}
 		result.DatabaseSizeBytes += info.Size()
+	}
+	if service.mediaDisk != nil {
+		usage, diskErr := service.mediaDisk()
+		if diskErr != nil {
+			// An offline volume must not take down the whole system info
+			// endpoint; the panel simply hides the disk row.
+			slog.WarnContext(ctx, "failed to read media disk usage", "error", diskErr)
+		} else {
+			result.MediaDisk = usage
+		}
 	}
 	return result, nil
 }

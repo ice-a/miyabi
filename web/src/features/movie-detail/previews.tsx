@@ -5,7 +5,7 @@ import type { PreviewImage } from '@/api/discover'
 import { MediaImage } from '@/components/media-image'
 import { MoviePreviewViewer } from './preview-viewer'
 
-export function MoviePreviews({ images }: { images: PreviewImage[] }) {
+export function MoviePreviews({ images, trailer }: { images: PreviewImage[]; trailer?: string }) {
   // The viewer stays mounted so its closing animation can play; the index outlives `open`.
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(0)
@@ -17,6 +17,20 @@ export function MoviePreviews({ images }: { images: PreviewImage[] }) {
 
   return (
     <section className="space-y-4">
+      {trailer ? (
+        <>
+          <h2 id="movie-trailer-title" className="text-xl font-semibold tracking-normal">
+            预告片
+          </h2>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            src={trailer}
+            controls
+            preload="none"
+            className="aspect-video w-full overflow-hidden rounded-xl bg-black"
+          />
+        </>
+      ) : null}
       <h2 id="movie-previews-title" className="text-xl font-semibold tracking-normal">
         预览图
       </h2>

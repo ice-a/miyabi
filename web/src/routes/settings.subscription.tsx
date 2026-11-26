@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { NotificationSection } from '@/features/settings/notification-section'
 import { SubscriptionSection } from '@/features/settings/subscription-section'
 import { SettingsCard } from '@/features/settings/shared'
 
@@ -11,6 +12,7 @@ function SettingsSubscriptionPage() {
   return (
     <SettingsCard>
       <SubscriptionSection />
+      <NotificationSection />
     </SettingsCard>
   )
 }

@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/ppxb/miyabi/internal/ent/actor"
 	"github.com/ppxb/miyabi/internal/ent/movie"
@@ -128,6 +129,24 @@ func (_u *ActorUpdate) SetNillableAvatar(v *string) *ActorUpdate {
 // ClearAvatar clears the value of the "avatar" field.
 func (_u *ActorUpdate) ClearAvatar() *ActorUpdate {
 	_u.mutation.ClearAvatar()
+	return _u
+}
+
+// SetAliases sets the "aliases" field.
+func (_u *ActorUpdate) SetAliases(v []string) *ActorUpdate {
+	_u.mutation.SetAliases(v)
+	return _u
+}
+
+// AppendAliases appends value to the "aliases" field.
+func (_u *ActorUpdate) AppendAliases(v []string) *ActorUpdate {
+	_u.mutation.AppendAliases(v)
+	return _u
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (_u *ActorUpdate) ClearAliases() *ActorUpdate {
+	_u.mutation.ClearAliases()
 	return _u
 }
 
@@ -271,6 +290,17 @@ func (_u *ActorUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.AvatarCleared() {
 		_spec.ClearField(actor.FieldAvatar, field.TypeString)
+	}
+	if value, ok := _u.mutation.Aliases(); ok {
+		_spec.SetField(actor.FieldAliases, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAliases(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, actor.FieldAliases, value)
+		})
+	}
+	if _u.mutation.AliasesCleared() {
+		_spec.ClearField(actor.FieldAliases, field.TypeJSON)
 	}
 	if _u.mutation.MoviesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -436,6 +466,24 @@ func (_u *ActorUpdateOne) SetNillableAvatar(v *string) *ActorUpdateOne {
 // ClearAvatar clears the value of the "avatar" field.
 func (_u *ActorUpdateOne) ClearAvatar() *ActorUpdateOne {
 	_u.mutation.ClearAvatar()
+	return _u
+}
+
+// SetAliases sets the "aliases" field.
+func (_u *ActorUpdateOne) SetAliases(v []string) *ActorUpdateOne {
+	_u.mutation.SetAliases(v)
+	return _u
+}
+
+// AppendAliases appends value to the "aliases" field.
+func (_u *ActorUpdateOne) AppendAliases(v []string) *ActorUpdateOne {
+	_u.mutation.AppendAliases(v)
+	return _u
+}
+
+// ClearAliases clears the value of the "aliases" field.
+func (_u *ActorUpdateOne) ClearAliases() *ActorUpdateOne {
+	_u.mutation.ClearAliases()
 	return _u
 }
 
@@ -609,6 +657,17 @@ func (_u *ActorUpdateOne) sqlSave(ctx context.Context) (_node *Actor, err error)
 	}
 	if _u.mutation.AvatarCleared() {
 		_spec.ClearField(actor.FieldAvatar, field.TypeString)
+	}
+	if value, ok := _u.mutation.Aliases(); ok {
+		_spec.SetField(actor.FieldAliases, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAliases(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, actor.FieldAliases, value)
+		})
+	}
+	if _u.mutation.AliasesCleared() {
+		_spec.ClearField(actor.FieldAliases, field.TypeJSON)
 	}
 	if _u.mutation.MoviesCleared() {
 		edge := &sqlgraph.EdgeSpec{

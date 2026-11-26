@@ -304,6 +304,20 @@ func (_c *MovieCreate) SetNillableScrapeStatus(v *movie.ScrapeStatus) *MovieCrea
 	return _c
 }
 
+// SetFavorite sets the "favorite" field.
+func (_c *MovieCreate) SetFavorite(v bool) *MovieCreate {
+	_c.mutation.SetFavorite(v)
+	return _c
+}
+
+// SetNillableFavorite sets the "favorite" field if the given value is not nil.
+func (_c *MovieCreate) SetNillableFavorite(v *bool) *MovieCreate {
+	if v != nil {
+		_c.SetFavorite(*v)
+	}
+	return _c
+}
+
 // AddActorIDs adds the "actors" edge to the Actor entity by IDs.
 func (_c *MovieCreate) AddActorIDs(ids ...int) *MovieCreate {
 	_c.mutation.AddActorIDs(ids...)
@@ -438,6 +452,10 @@ func (_c *MovieCreate) defaults() error {
 		v := movie.DefaultScrapeStatus
 		_c.mutation.SetScrapeStatus(v)
 	}
+	if _, ok := _c.mutation.Favorite(); !ok {
+		v := movie.DefaultFavorite
+		_c.mutation.SetFavorite(v)
+	}
 	return nil
 }
 
@@ -476,6 +494,9 @@ func (_c *MovieCreate) check() error {
 		if err := movie.ScrapeStatusValidator(v); err != nil {
 			return &ValidationError{Name: "scrape_status", err: fmt.Errorf(`ent: validator failed for field "Movie.scrape_status": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Favorite(); !ok {
+		return &ValidationError{Name: "favorite", err: errors.New(`ent: missing required field "Movie.favorite"`)}
 	}
 	return nil
 }
@@ -591,6 +612,10 @@ func (_c *MovieCreate) createSpec() (*Movie, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ScrapeStatus(); ok {
 		_spec.SetField(movie.FieldScrapeStatus, field.TypeEnum, value)
 		_node.ScrapeStatus = value
+	}
+	if value, ok := _c.mutation.Favorite(); ok {
+		_spec.SetField(movie.FieldFavorite, field.TypeBool, value)
+		_node.Favorite = value
 	}
 	if nodes := _c.mutation.ActorsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1056,6 +1081,18 @@ func (u *MovieUpsert) UpdateScrapeStatus() *MovieUpsert {
 	return u
 }
 
+// SetFavorite sets the "favorite" field.
+func (u *MovieUpsert) SetFavorite(v bool) *MovieUpsert {
+	u.Set(movie.FieldFavorite, v)
+	return u
+}
+
+// UpdateFavorite sets the "favorite" field to the value that was provided on create.
+func (u *MovieUpsert) UpdateFavorite() *MovieUpsert {
+	u.SetExcluded(movie.FieldFavorite)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1504,6 +1541,20 @@ func (u *MovieUpsertOne) SetScrapeStatus(v movie.ScrapeStatus) *MovieUpsertOne {
 func (u *MovieUpsertOne) UpdateScrapeStatus() *MovieUpsertOne {
 	return u.Update(func(s *MovieUpsert) {
 		s.UpdateScrapeStatus()
+	})
+}
+
+// SetFavorite sets the "favorite" field.
+func (u *MovieUpsertOne) SetFavorite(v bool) *MovieUpsertOne {
+	return u.Update(func(s *MovieUpsert) {
+		s.SetFavorite(v)
+	})
+}
+
+// UpdateFavorite sets the "favorite" field to the value that was provided on create.
+func (u *MovieUpsertOne) UpdateFavorite() *MovieUpsertOne {
+	return u.Update(func(s *MovieUpsert) {
+		s.UpdateFavorite()
 	})
 }
 
@@ -2121,6 +2172,20 @@ func (u *MovieUpsertBulk) SetScrapeStatus(v movie.ScrapeStatus) *MovieUpsertBulk
 func (u *MovieUpsertBulk) UpdateScrapeStatus() *MovieUpsertBulk {
 	return u.Update(func(s *MovieUpsert) {
 		s.UpdateScrapeStatus()
+	})
+}
+
+// SetFavorite sets the "favorite" field.
+func (u *MovieUpsertBulk) SetFavorite(v bool) *MovieUpsertBulk {
+	return u.Update(func(s *MovieUpsert) {
+		s.SetFavorite(v)
+	})
+}
+
+// UpdateFavorite sets the "favorite" field to the value that was provided on create.
+func (u *MovieUpsertBulk) UpdateFavorite() *MovieUpsertBulk {
+	return u.Update(func(s *MovieUpsert) {
+		s.UpdateFavorite()
 	})
 }
 

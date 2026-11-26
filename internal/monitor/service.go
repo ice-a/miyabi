@@ -14,6 +14,7 @@ import (
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/subscription"
 	"github.com/ppxb/miyabi/internal/magnet"
+	"github.com/ppxb/miyabi/internal/notify"
 	"github.com/ppxb/miyabi/internal/tasks"
 )
 
@@ -25,14 +26,16 @@ const (
 var checkTimePattern = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
 
 // Config is the subscription settings section: default auto-download flags,
-// the daily time at which movie and actor subscriptions are checked, and the
-// magnet preferences the picker applies.
+// the daily time at which movie and actor subscriptions are checked, the
+// magnet preferences the picker applies, and the notification channel the
+// daily check reports hits to.
 type Config struct {
 	MovieAutoDownload bool               `json:"movie_auto_download"`
 	ActorAutoDownload bool               `json:"actor_auto_download"`
 	CheckTime         string             `json:"check_time"`
 	Preferences       magnet.Preferences `json:"preferences"`
 	Download          download.Config    `json:"download"`
+	Notification      notify.Config      `json:"notification"`
 }
 
 func DefaultConfig() Config {
@@ -61,6 +64,9 @@ func (c Config) validate() error {
 	if !checkTimePattern.MatchString(c.CheckTime) {
 		return domain.E(domain.KindInvalid, "检查时间格式应为 HH:MM", nil)
 	}
+	if err := c.Notification.Validate(); err != nil {
+		return err
+	}
 	return c.Preferences.Validate()
 }
 
@@ -77,6 +83,7 @@ type Item struct {
 	AutoDownload  bool                `json:"auto_download"`
 	Status        subscription.Status `json:"status"`
 	Hash          string              `json:"hash,omitempty"`
+	Magnet        string              `json:"magnet,omitempty"`
 	TaskID        *int                `json:"task_id,omitempty"`
 	NextCheckAt   *time.Time          `json:"next_check_at,omitempty"`
 	LastCheckedAt *time.Time          `json:"last_checked_at,omitempty"`
@@ -226,7 +233,7 @@ func subscriptionItem(record *ent.Subscription) Item {
 	return Item{
 		ID: record.ID, Kind: string(record.Kind), TargetID: record.TargetID, Code: record.Code,
 		Title: record.Title, Cover: record.Cover, ReleaseDate: record.ReleaseDate, OriginID: record.OriginID,
-		AutoDownload: record.AutoDownload, Status: record.Status, Hash: record.Hash,
+		AutoDownload: record.AutoDownload, Status: record.Status, Hash: record.Hash, Magnet: record.Magnet,
 		TaskID: record.TaskID, NextCheckAt: record.NextCheckAt, LastCheckedAt: record.LastCheckedAt,
 		Checks: record.Checks, Error: record.Error, CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt,
 	}

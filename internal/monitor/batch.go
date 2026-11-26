@@ -38,9 +38,6 @@ func (service *Service) enqueueMovie(ctx context.Context, record *ent.Subscripti
 	if record.Kind != subscription.KindMovie {
 		return Item{}, domain.E(domain.KindInvalid, "只有影片订阅可以入库", nil)
 	}
-	if record.Status == subscription.StatusAdded {
-		return subscriptionItem(record), nil
-	}
 	magnets, err := service.discover.CatalogueMagnets(ctx, record.TargetID)
 	if err != nil {
 		return Item{}, fmt.Errorf("fetch magnets for %s: %w", record.Code, err)
@@ -108,27 +105,23 @@ func (service *Service) BatchHandler(ctx context.Context, job tasks.Job) error {
 		}
 		id := payload.IDs[index]
 		code := ""
-		var item Item
 		record, err := service.database.Subscription.Get(ctx, id)
 		if err == nil {
 			code = record.Code
-			item, err = service.enqueueMovie(ctx, record, picker, cfg.CheckTime)
+			_, err = service.enqueueMovie(ctx, record, picker, cfg.CheckTime)
 		}
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 		payload.Batch.Processed++
-		switch {
-		case err != nil:
+		if err != nil {
 			payload.Batch.Failed++
 			payload.FailedIDs = append(payload.FailedIDs, id)
 			if len(payload.Batch.Failures) < batchFailureLimit {
 				payload.Batch.Failures = append(payload.Batch.Failures, domain.SubscriptionFailure{Code: code, Error: domain.PublicMessage(err)})
 			}
 			slog.WarnContext(ctx, "batch ingestion item failed", "subscription_id", id, "code", code, "error", err)
-		case item.Status == subscription.StatusAdded:
-			payload.Batch.Submitted++
-		default:
+		} else {
 			payload.Batch.Waiting++
 		}
 		if err := service.saveSubscriptionBatch(ctx, job.ID, payload); err != nil {

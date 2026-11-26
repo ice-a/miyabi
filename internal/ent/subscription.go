@@ -43,6 +43,8 @@ type Subscription struct {
 	Cursor string `json:"cursor,omitempty"`
 	// Hash holds the value of the "hash" field.
 	Hash string `json:"hash,omitempty"`
+	// Magnet holds the value of the "magnet" field.
+	Magnet string `json:"magnet,omitempty"`
 	// TaskID holds the value of the "task_id" field.
 	TaskID *int `json:"task_id,omitempty"`
 	// NextCheckAt holds the value of the "next_check_at" field.
@@ -65,7 +67,7 @@ func (*Subscription) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case subscription.FieldID, subscription.FieldOriginID, subscription.FieldTaskID, subscription.FieldChecks:
 			values[i] = new(sql.NullInt64)
-		case subscription.FieldKind, subscription.FieldTargetID, subscription.FieldCode, subscription.FieldTitle, subscription.FieldCover, subscription.FieldReleaseDate, subscription.FieldStatus, subscription.FieldCursor, subscription.FieldHash, subscription.FieldError:
+		case subscription.FieldKind, subscription.FieldTargetID, subscription.FieldCode, subscription.FieldTitle, subscription.FieldCover, subscription.FieldReleaseDate, subscription.FieldStatus, subscription.FieldCursor, subscription.FieldHash, subscription.FieldMagnet, subscription.FieldError:
 			values[i] = new(sql.NullString)
 		case subscription.FieldCreatedAt, subscription.FieldUpdatedAt, subscription.FieldNextCheckAt, subscription.FieldLastCheckedAt:
 			values[i] = new(sql.NullTime)
@@ -168,6 +170,12 @@ func (_m *Subscription) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field hash", values[i])
 			} else if value.Valid {
 				_m.Hash = value.String
+			}
+		case subscription.FieldMagnet:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field magnet", values[i])
+			} else if value.Valid {
+				_m.Magnet = value.String
 			}
 		case subscription.FieldTaskID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -279,6 +287,9 @@ func (_m *Subscription) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("hash=")
 	builder.WriteString(_m.Hash)
+	builder.WriteString(", ")
+	builder.WriteString("magnet=")
+	builder.WriteString(_m.Magnet)
 	builder.WriteString(", ")
 	if v := _m.TaskID; v != nil {
 		builder.WriteString("task_id=")

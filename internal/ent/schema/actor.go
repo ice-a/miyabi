@@ -30,6 +30,8 @@ func (Actor) Fields() []ent.Field {
 		field.String("avatar").
 			Optional().
 			Nillable(),
+		field.JSON("aliases", []string{}).
+			Optional(),
 	}
 }
 

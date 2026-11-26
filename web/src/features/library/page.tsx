@@ -9,6 +9,7 @@ import { ListPagination } from '@/components/list-pagination'
 import { MovieGridLayout } from '@/components/movie/movie-grid-layout'
 import { MovieGridSkeleton } from '@/components/movie/movie-grid-skeleton'
 import { PageHeader } from '@/components/page-header'
+import { Button } from '@/components/ui/button'
 import { ContinueWatching } from '@/features/library/continue-watching'
 import { LibraryMovieCard } from '@/features/library/movie-card'
 import { LibraryProgress } from '@/features/library/library-progress'
@@ -28,7 +29,8 @@ export function LibraryPage({
   page: number
   onPageChange: (page: number) => void
 }) {
-  const library = useLibraryMovies(page)
+  const [favoriteOnly, setFavoriteOnly] = useState(false)
+  const library = useLibraryMovies(page, { favorite: favoriteOnly })
   const tasks = useTasks()
   const connection = useTaskConnection()
   const [playingId, setPlayingId] = useState<number | null>(null)
@@ -43,6 +45,16 @@ export function LibraryPage({
   return (
     <AppPage>
       <PageHeader title="媒体库" description="最新、高分或分类影片" inlineActions>
+        <Button
+          size="sm"
+          variant={favoriteOnly ? 'default' : 'outline'}
+          onClick={() => {
+            setFavoriteOnly(current => !current)
+            if (page !== 1) onPageChange(1)
+          }}
+        >
+          只看收藏
+        </Button>
         <LibraryProgress task={progressTask} />
       </PageHeader>
 
@@ -83,13 +95,15 @@ export function LibraryPage({
             <EmptyState
               className="min-h-0 flex-1 py-12"
               title={
-                !source
-                  ? '在设置 → 源管理中添加并登录存储源后，扫描入库'
-                  : scanning
-                    ? connection.status === 'connected'
-                      ? `${latestScan?.rebuild ? '正在重建' : '正在同步'}，识别到的影片会陆续显示`
-                      : '连接中，等待更新媒体库进度'
-                    : '未识别到影片'
+                favoriteOnly
+                  ? '暂无收藏影片，右键影片卡片可加入收藏'
+                  : !source
+                    ? '在设置 → 源管理中添加并登录存储源后，扫描入库'
+                    : scanning
+                      ? connection.status === 'connected'
+                        ? `${latestScan?.rebuild ? '正在重建' : '正在同步'}，识别到的影片会陆续显示`
+                        : '连接中，等待更新媒体库进度'
+                      : '未识别到影片'
               }
             />
           )}

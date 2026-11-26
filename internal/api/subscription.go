@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ppxb/miyabi/internal/monitor"
+	"github.com/ppxb/miyabi/internal/notify"
 )
 
 type SubscriptionManager interface {
@@ -14,6 +16,7 @@ type SubscriptionManager interface {
 	AddActor(ctx context.Context, actorID string, opts monitor.AddActorOptions) (monitor.Item, error)
 	Update(ctx context.Context, id int, opts monitor.UpdateOptions) (monitor.Item, error)
 	Remove(ctx context.Context, id int) error
+	SetManualMagnet(ctx context.Context, id int, magnetURI string) (monitor.Item, error)
 	EnqueueSingle(ctx context.Context, id int) (monitor.Item, error)
 	EnqueueBatch(ctx context.Context, req monitor.BatchEnqueueRequest) (int, error)
 	ActorFeed(ctx context.Context, actorID int, page int, limit int) ([]monitor.Item, error)
@@ -121,6 +124,25 @@ func subscriptionUpdateHandler(mgr SubscriptionManager) gin.HandlerFunc {
 	}
 }
 
+type subscriptionMagnetInput struct {
+	Magnet string `json:"magnet" binding:"required"`
+}
+
+func subscriptionMagnetHandler(mgr SubscriptionManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uri, ok := bindURI[subscriptionURI](c)
+		if !ok {
+			return
+		}
+		input, ok := bindJSON[subscriptionMagnetInput](c)
+		if !ok {
+			return
+		}
+		item, err := mgr.SetManualMagnet(c.Request.Context(), uri.ID, input.Magnet)
+		respond(c, item, err)
+	}
+}
+
 func subscriptionRemoveHandler(mgr SubscriptionManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uri, ok := bindURI[subscriptionURI](c)
@@ -191,5 +213,23 @@ func subscriptionSettingsUpdateHandler(mgr SubscriptionManager) gin.HandlerFunc 
 		}
 		saved, err := mgr.UpdateConfig(c.Request.Context(), cfg)
 		respond(c, saved, err)
+	}
+}
+
+// notificationTestHandler sends a probe message through an unsaved channel
+// configuration so the user can verify the endpoint before saving.
+func notificationTestHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		channel, ok := bindJSON[notify.Config](c)
+		if !ok {
+			return
+		}
+		if err := channel.Validate(); err != nil {
+			respond(c, nil, err)
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+		defer cancel()
+		respond(c, gin.H{"ok": true}, channel.Send(ctx, nil, "Miyabi 通知测试", "这是一条测试通知，如果你看到它说明通知通道配置正确。"))
 	}
 }

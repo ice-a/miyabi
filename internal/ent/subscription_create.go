@@ -196,6 +196,20 @@ func (_c *SubscriptionCreate) SetNillableHash(v *string) *SubscriptionCreate {
 	return _c
 }
 
+// SetMagnet sets the "magnet" field.
+func (_c *SubscriptionCreate) SetMagnet(v string) *SubscriptionCreate {
+	_c.mutation.SetMagnet(v)
+	return _c
+}
+
+// SetNillableMagnet sets the "magnet" field if the given value is not nil.
+func (_c *SubscriptionCreate) SetNillableMagnet(v *string) *SubscriptionCreate {
+	if v != nil {
+		_c.SetMagnet(*v)
+	}
+	return _c
+}
+
 // SetTaskID sets the "task_id" field.
 func (_c *SubscriptionCreate) SetTaskID(v int) *SubscriptionCreate {
 	_c.mutation.SetTaskID(v)
@@ -491,6 +505,10 @@ func (_c *SubscriptionCreate) createSpec() (*Subscription, *sqlgraph.CreateSpec)
 		_spec.SetField(subscription.FieldHash, field.TypeString, value)
 		_node.Hash = value
 	}
+	if value, ok := _c.mutation.Magnet(); ok {
+		_spec.SetField(subscription.FieldMagnet, field.TypeString, value)
+		_node.Magnet = value
+	}
 	if value, ok := _c.mutation.TaskID(); ok {
 		_spec.SetField(subscription.FieldTaskID, field.TypeInt, value)
 		_node.TaskID = &value
@@ -716,6 +734,24 @@ func (u *SubscriptionUpsert) SetHash(v string) *SubscriptionUpsert {
 // UpdateHash sets the "hash" field to the value that was provided on create.
 func (u *SubscriptionUpsert) UpdateHash() *SubscriptionUpsert {
 	u.SetExcluded(subscription.FieldHash)
+	return u
+}
+
+// SetMagnet sets the "magnet" field.
+func (u *SubscriptionUpsert) SetMagnet(v string) *SubscriptionUpsert {
+	u.Set(subscription.FieldMagnet, v)
+	return u
+}
+
+// UpdateMagnet sets the "magnet" field to the value that was provided on create.
+func (u *SubscriptionUpsert) UpdateMagnet() *SubscriptionUpsert {
+	u.SetExcluded(subscription.FieldMagnet)
+	return u
+}
+
+// ClearMagnet clears the value of the "magnet" field.
+func (u *SubscriptionUpsert) ClearMagnet() *SubscriptionUpsert {
+	u.SetNull(subscription.FieldMagnet)
 	return u
 }
 
@@ -1039,6 +1075,27 @@ func (u *SubscriptionUpsertOne) SetHash(v string) *SubscriptionUpsertOne {
 func (u *SubscriptionUpsertOne) UpdateHash() *SubscriptionUpsertOne {
 	return u.Update(func(s *SubscriptionUpsert) {
 		s.UpdateHash()
+	})
+}
+
+// SetMagnet sets the "magnet" field.
+func (u *SubscriptionUpsertOne) SetMagnet(v string) *SubscriptionUpsertOne {
+	return u.Update(func(s *SubscriptionUpsert) {
+		s.SetMagnet(v)
+	})
+}
+
+// UpdateMagnet sets the "magnet" field to the value that was provided on create.
+func (u *SubscriptionUpsertOne) UpdateMagnet() *SubscriptionUpsertOne {
+	return u.Update(func(s *SubscriptionUpsert) {
+		s.UpdateMagnet()
+	})
+}
+
+// ClearMagnet clears the value of the "magnet" field.
+func (u *SubscriptionUpsertOne) ClearMagnet() *SubscriptionUpsertOne {
+	return u.Update(func(s *SubscriptionUpsert) {
+		s.ClearMagnet()
 	})
 }
 
@@ -1544,6 +1601,27 @@ func (u *SubscriptionUpsertBulk) SetHash(v string) *SubscriptionUpsertBulk {
 func (u *SubscriptionUpsertBulk) UpdateHash() *SubscriptionUpsertBulk {
 	return u.Update(func(s *SubscriptionUpsert) {
 		s.UpdateHash()
+	})
+}
+
+// SetMagnet sets the "magnet" field.
+func (u *SubscriptionUpsertBulk) SetMagnet(v string) *SubscriptionUpsertBulk {
+	return u.Update(func(s *SubscriptionUpsert) {
+		s.SetMagnet(v)
+	})
+}
+
+// UpdateMagnet sets the "magnet" field to the value that was provided on create.
+func (u *SubscriptionUpsertBulk) UpdateMagnet() *SubscriptionUpsertBulk {
+	return u.Update(func(s *SubscriptionUpsert) {
+		s.UpdateMagnet()
+	})
+}
+
+// ClearMagnet clears the value of the "magnet" field.
+func (u *SubscriptionUpsertBulk) ClearMagnet() *SubscriptionUpsertBulk {
+	return u.Update(func(s *SubscriptionUpsert) {
+		s.ClearMagnet()
 	})
 }
 

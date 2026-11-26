@@ -110,6 +110,8 @@ type Actor struct {
 	NameZHT  string `json:"name_zht"`
 	Gender   string `json:"gender"`
 	Avatar   string `json:"avatar"`
+	// Aliases lists alternate spellings observed for the same actor row.
+	Aliases []string `json:"aliases,omitempty"`
 }
 
 // Tag is a content tag.

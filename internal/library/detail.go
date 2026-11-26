@@ -6,6 +6,7 @@ import (
 
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/ent"
+	"github.com/ppxb/miyabi/internal/ent/actor"
 	"github.com/ppxb/miyabi/internal/ent/movie"
 	"github.com/ppxb/miyabi/internal/nfo"
 )
@@ -14,6 +15,7 @@ type MovieDetail struct {
 	domain.MovieDetail
 	LibraryID    int                `json:"library_id"`
 	ScrapeStatus movie.ScrapeStatus `json:"scrape_status"`
+	Favorite     bool               `json:"favorite"`
 }
 
 // Movie reads saved metadata within the same scope as the library list. Opening
@@ -24,7 +26,7 @@ func (s *Service) Movie(ctx context.Context, id int) (MovieDetail, error) {
 		return MovieDetail{}, err
 	}
 	doc := domain.ValueOrZero(record.Metadata)
-	detail := MovieDetail{LibraryID: record.ID, ScrapeStatus: record.ScrapeStatus}
+	detail := MovieDetail{LibraryID: record.ID, ScrapeStatus: record.ScrapeStatus, Favorite: record.Favorite}
 	detail.MovieDetail = domain.MovieDetail{
 		Zone: doc.Zone,
 		Movie: domain.Movie{
@@ -33,7 +35,8 @@ func (s *Service) Movie(ctx context.Context, id int) (MovieDetail, error) {
 			Rating: domain.NormalizeRating10(doc.Rating, doc.RatingMax), RatingMax: 10,
 			RatingSource: doc.RatingSource, FieldSources: doc.FieldSources,
 			Thumbnail: domain.ValueOrZero(record.Cover), Cover: domain.ValueOrZero(record.Poster),
-			Actors: []domain.Actor{}, Tags: []domain.Tag{}, PreviewImages: []domain.PreviewImage{},
+			PreviewVideo: doc.PreviewVideo,
+			Actors:       []domain.Actor{}, Tags: []domain.Tag{}, PreviewImages: []domain.PreviewImage{},
 		},
 		ActorMovies: []domain.MovieReference{}, RelatedMovies: []domain.MovieReference{},
 	}
@@ -46,9 +49,16 @@ func (s *Service) Movie(ctx context.Context, id int) (MovieDetail, error) {
 	for _, id := range doc.IDs {
 		detail.Sources = append(detail.Sources, domain.SourceID{Provider: id.Type, ID: id.Value})
 	}
-	for _, person := range doc.Actors {
-		detail.Actors = append(detail.Actors, domain.Actor{Provider: person.Provider, ID: person.ID,
-			Name: person.Name, NameZHT: person.NameZHT, Gender: person.Gender})
+	for _, person := range record.Edges.Actors {
+		detail.Actors = append(detail.Actors, domain.Actor{Provider: person.Provider, ID: person.SourceID,
+			Name: person.Name, NameZHT: domain.ValueOrZero(person.NameZht), Gender: string(person.Gender),
+			Avatar: domain.ValueOrZero(person.Avatar), Aliases: person.Aliases})
+	}
+	if len(detail.Actors) == 0 {
+		for _, person := range doc.Actors {
+			detail.Actors = append(detail.Actors, domain.Actor{Provider: person.Provider, ID: person.ID,
+				Name: person.Name, NameZHT: person.NameZHT, Gender: person.Gender})
+		}
 	}
 	for _, tag := range doc.Tags {
 		detail.Tags = append(detail.Tags, domain.Tag{Provider: tag.Provider, ID: tag.ID,
@@ -85,6 +95,9 @@ func (s *Service) Preview(ctx context.Context, id, index int) (domain.ImageCandi
 
 func (s *Service) detailRecord(ctx context.Context, id int) (*ent.Movie, error) {
 	record, err := s.database.Movie.Query().Where(movie.IDEQ(id), movie.HasFilesWith(s.scope(ctx))).
+		WithActors(func(query *ent.ActorQuery) {
+			query.Order(ent.Asc(actor.FieldName), ent.Asc(actor.FieldID))
+		}).
 		Only(ctx)
 	if ent.IsNotFound(err) {
 		return nil, domain.E(domain.KindNotFound, "影片不在当前媒体库中", err)

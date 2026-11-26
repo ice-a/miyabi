@@ -170,7 +170,8 @@ func New(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	scrapeSvc := scrape.New(store.Client, storageSvc, metadataSvc, images, taskSvc, scrape.Dependencies{
 		ExportManager: exportMgr, MediaNotifier: embySvc, Subtitles: subtitleSvc,
 	})
-	maintenanceSvc, err := maintenance.New(cfg.DataDir, store.Client, images, scrapeSvc)
+	maintenanceSvc, err := maintenance.New(cfg.DataDir, store.Client, images, scrapeSvc,
+		maintenance.WithMediaDisk(storageSvc.DiskSpace))
 	if err != nil {
 		scrapeSvc.Close()
 		embySvc.Close()

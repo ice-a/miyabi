@@ -64,6 +64,8 @@ type Movie struct {
 	MetadataSnapshot *domain.MetadataSnapshot `json:"metadata_snapshot,omitempty"`
 	// ScrapeStatus holds the value of the "scrape_status" field.
 	ScrapeStatus movie.ScrapeStatus `json:"scrape_status,omitempty"`
+	// User-curated flag surfaced as a library filter.
+	Favorite bool `json:"favorite,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MovieQuery when eager-loading is set.
 	Edges        MovieEdges `json:"edges"`
@@ -128,6 +130,8 @@ func (*Movie) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case movie.FieldFanarts, movie.FieldMetadata, movie.FieldMetadataSnapshot:
 			values[i] = new([]byte)
+		case movie.FieldFavorite:
+			values[i] = new(sql.NullBool)
 		case movie.FieldRating:
 			values[i] = new(sql.NullFloat64)
 		case movie.FieldID, movie.FieldDuration:
@@ -307,6 +311,12 @@ func (_m *Movie) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ScrapeStatus = movie.ScrapeStatus(value.String)
 			}
+		case movie.FieldFavorite:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field favorite", values[i])
+			} else if value.Valid {
+				_m.Favorite = value.Bool
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -452,6 +462,9 @@ func (_m *Movie) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("scrape_status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ScrapeStatus))
+	builder.WriteString(", ")
+	builder.WriteString("favorite=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Favorite))
 	builder.WriteByte(')')
 	return builder.String()
 }

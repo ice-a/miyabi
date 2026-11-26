@@ -31,6 +31,8 @@ const (
 	FieldGender = "gender"
 	// FieldAvatar holds the string denoting the avatar field in the database.
 	FieldAvatar = "avatar"
+	// FieldAliases holds the string denoting the aliases field in the database.
+	FieldAliases = "aliases"
 	// EdgeMovies holds the string denoting the movies edge name in mutations.
 	EdgeMovies = "movies"
 	// Table holds the table name of the actor in the database.
@@ -53,6 +55,7 @@ var Columns = []string{
 	FieldNameZht,
 	FieldGender,
 	FieldAvatar,
+	FieldAliases,
 }
 
 var (

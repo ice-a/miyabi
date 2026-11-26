@@ -58,7 +58,6 @@ export type BatchTask = TaskBase & {
   batch: {
     total: number
     processed: number
-    submitted: number
     waiting: number
     failed: number
     failures?: { code: string; error: string }[]

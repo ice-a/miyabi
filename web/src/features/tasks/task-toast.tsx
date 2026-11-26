@@ -109,8 +109,8 @@ export function notifyBatchTask(task: BatchTask, options: TaskToastOptions = {})
     options,
     task.can_retry ? task.id : undefined
   )
-  const { total, processed, submitted, waiting, failed, failures } = task.batch
-  const summary = `命中磁力 ${submitted} 部 · 等待磁力 ${waiting} 部${failed > 0 ? ` · 失败 ${failed} 部` : ''}`
+  const { total, processed, waiting, failed, failures } = task.batch
+  const summary = `等待磁力 ${waiting} 部${failed > 0 ? ` · 失败 ${failed} 部` : ''}`
   if (active) {
     toast.info('正在批量入库', {
       ...props,

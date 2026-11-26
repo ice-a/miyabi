@@ -4,7 +4,7 @@ import type { JavDBEntityType, JavDBZone } from '@/api/discover'
 import { Badge } from '@/components/ui/badge'
 import { MetadataLink } from './metadata-link'
 
-type MetadataEntity = { provider?: string; id?: string; name: string }
+type MetadataEntity = { provider?: string; id?: string; name: string; aliases?: string[] }
 
 export type MovieMetadataValues = {
   maker?: MetadataEntity
@@ -37,6 +37,11 @@ export function MovieMetadata({ movie }: { movie: MovieMetadataValues }) {
             >
               {index > 0 ? <span className="text-muted-foreground">/</span> : null}
               <EntityLink kind="actor" entity={actor} />
+              {actor.aliases && actor.aliases.length > 0 ? (
+                <span className="text-xs leading-6 text-muted-foreground">
+                  {actor.aliases.join(' / ')}
+                </span>
+              ) : null}
             </span>
           ))}
         </EntityRow>

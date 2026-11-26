@@ -94,6 +94,20 @@ func (service *Service) Source() *domain.LibrarySource {
 	return &source
 }
 
+// DiskSpace reports the volume capacity behind the mounted media directory.
+// It returns nil when nothing is mounted.
+func (service *Service) DiskSpace() (*DiskUsage, error) {
+	root := service.rootDirectory()
+	if root == "" {
+		return nil, nil
+	}
+	usage, err := diskUsage(root)
+	if err != nil {
+		return nil, fmt.Errorf("read disk usage of %s: %w", root, err)
+	}
+	return &usage, nil
+}
+
 // Open returns a session for the current mount.
 func (service *Service) Open(ctx context.Context) (Session, error) {
 	source := service.Source()

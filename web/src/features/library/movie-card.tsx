@@ -48,6 +48,11 @@ export function LibraryMovieCard({
             state={movie.source && movie.source !== 'local' ? <Badge variant="frosted">{movie.source}</Badge> : undefined}
             coverOverlay={
               <>
+                {movie.favorite ? (
+                  <div className="pointer-events-none absolute top-2 left-2 grid size-6 place-items-center rounded-full bg-black/55 backdrop-blur-sm">
+                    <StarIcon className="size-3.5 fill-yellow-400 text-yellow-400" />
+                  </div>
+                ) : null}
                 {movie.rating > 0 ? (
                   <div className="pointer-events-none absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
                     <StarIcon className="size-3.5 fill-yellow-400 text-yellow-400" />

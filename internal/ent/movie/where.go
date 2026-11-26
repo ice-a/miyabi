@@ -145,6 +145,11 @@ func Poster(v string) predicate.Movie {
 	return predicate.Movie(sql.FieldEQ(FieldPoster, v))
 }
 
+// Favorite applies equality check predicate on the "favorite" field. It's identical to FavoriteEQ.
+func Favorite(v bool) predicate.Movie {
+	return predicate.Movie(sql.FieldEQ(FieldFavorite, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Movie {
 	return predicate.Movie(sql.FieldEQ(FieldCreatedAt, v))
@@ -1348,6 +1353,16 @@ func ScrapeStatusIn(vs ...ScrapeStatus) predicate.Movie {
 // ScrapeStatusNotIn applies the NotIn predicate on the "scrape_status" field.
 func ScrapeStatusNotIn(vs ...ScrapeStatus) predicate.Movie {
 	return predicate.Movie(sql.FieldNotIn(FieldScrapeStatus, vs...))
+}
+
+// FavoriteEQ applies the EQ predicate on the "favorite" field.
+func FavoriteEQ(v bool) predicate.Movie {
+	return predicate.Movie(sql.FieldEQ(FieldFavorite, v))
+}
+
+// FavoriteNEQ applies the NEQ predicate on the "favorite" field.
+func FavoriteNEQ(v bool) predicate.Movie {
+	return predicate.Movie(sql.FieldNEQ(FieldFavorite, v))
 }
 
 // HasActors applies the HasEdge predicate on the "actors" edge.

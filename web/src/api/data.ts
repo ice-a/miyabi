@@ -11,6 +11,11 @@ export type DataInfo = {
     unused_size_bytes: number
     unused_entry_count: number
   }
+  media_disk?: {
+    total_bytes: number
+    free_bytes: number
+    used_bytes: number
+  }
 }
 
 const dataKeys = { system: ['settings', 'system'] as const }

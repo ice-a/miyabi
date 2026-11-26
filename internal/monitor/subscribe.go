@@ -3,11 +3,13 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ppxb/miyabi/internal/domain"
 	"github.com/ppxb/miyabi/internal/ent"
 	"github.com/ppxb/miyabi/internal/ent/subscription"
+	"github.com/ppxb/miyabi/internal/magnet"
 )
 
 type AddMovieOptions struct {
@@ -118,6 +120,30 @@ func (service *Service) Update(ctx context.Context, id int, opts UpdateOptions) 
 	updated, err := update.Save(ctx)
 	if err != nil {
 		return Item{}, fmt.Errorf("update subscription %d: %w", id, err)
+	}
+	service.tasks.NotifyMonitorChanged()
+	return subscriptionItem(updated), nil
+}
+
+// SetManualMagnet records a user-supplied magnet link (or bare hash) on a
+// subscription. The full URI is kept so the user can copy it back out, while
+// the subscription stays waiting for the usual ingestion flow.
+func (service *Service) SetManualMagnet(ctx context.Context, id int, magnetURI string) (Item, error) {
+	hash, err := magnet.ParseHash(magnetURI)
+	if err != nil {
+		return Item{}, err
+	}
+	uri := strings.TrimSpace(magnetURI)
+	if strings.EqualFold(uri, hash) {
+		uri = "magnet:?xt=urn:btih:" + hash
+	}
+	record, err := service.database.Subscription.Get(ctx, id)
+	if err != nil {
+		return Item{}, err
+	}
+	updated, err := record.Update().SetHash(hash).SetMagnet(uri).ClearError().Save(ctx)
+	if err != nil {
+		return Item{}, fmt.Errorf("record manual magnet %d: %w", id, err)
 	}
 	service.tasks.NotifyMonitorChanged()
 	return subscriptionItem(updated), nil

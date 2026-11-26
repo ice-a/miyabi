@@ -201,6 +201,26 @@ func (_u *SubscriptionUpdate) SetNillableHash(v *string) *SubscriptionUpdate {
 	return _u
 }
 
+// SetMagnet sets the "magnet" field.
+func (_u *SubscriptionUpdate) SetMagnet(v string) *SubscriptionUpdate {
+	_u.mutation.SetMagnet(v)
+	return _u
+}
+
+// SetNillableMagnet sets the "magnet" field if the given value is not nil.
+func (_u *SubscriptionUpdate) SetNillableMagnet(v *string) *SubscriptionUpdate {
+	if v != nil {
+		_u.SetMagnet(*v)
+	}
+	return _u
+}
+
+// ClearMagnet clears the value of the "magnet" field.
+func (_u *SubscriptionUpdate) ClearMagnet() *SubscriptionUpdate {
+	_u.mutation.ClearMagnet()
+	return _u
+}
+
 // SetTaskID sets the "task_id" field.
 func (_u *SubscriptionUpdate) SetTaskID(v int) *SubscriptionUpdate {
 	_u.mutation.ResetTaskID()
@@ -429,6 +449,12 @@ func (_u *SubscriptionUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.Hash(); ok {
 		_spec.SetField(subscription.FieldHash, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Magnet(); ok {
+		_spec.SetField(subscription.FieldMagnet, field.TypeString, value)
+	}
+	if _u.mutation.MagnetCleared() {
+		_spec.ClearField(subscription.FieldMagnet, field.TypeString)
+	}
 	if value, ok := _u.mutation.TaskID(); ok {
 		_spec.SetField(subscription.FieldTaskID, field.TypeInt, value)
 	}
@@ -652,6 +678,26 @@ func (_u *SubscriptionUpdateOne) SetNillableHash(v *string) *SubscriptionUpdateO
 	if v != nil {
 		_u.SetHash(*v)
 	}
+	return _u
+}
+
+// SetMagnet sets the "magnet" field.
+func (_u *SubscriptionUpdateOne) SetMagnet(v string) *SubscriptionUpdateOne {
+	_u.mutation.SetMagnet(v)
+	return _u
+}
+
+// SetNillableMagnet sets the "magnet" field if the given value is not nil.
+func (_u *SubscriptionUpdateOne) SetNillableMagnet(v *string) *SubscriptionUpdateOne {
+	if v != nil {
+		_u.SetMagnet(*v)
+	}
+	return _u
+}
+
+// ClearMagnet clears the value of the "magnet" field.
+func (_u *SubscriptionUpdateOne) ClearMagnet() *SubscriptionUpdateOne {
+	_u.mutation.ClearMagnet()
 	return _u
 }
 
@@ -912,6 +958,12 @@ func (_u *SubscriptionUpdateOne) sqlSave(ctx context.Context) (_node *Subscripti
 	}
 	if value, ok := _u.mutation.Hash(); ok {
 		_spec.SetField(subscription.FieldHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Magnet(); ok {
+		_spec.SetField(subscription.FieldMagnet, field.TypeString, value)
+	}
+	if _u.mutation.MagnetCleared() {
+		_spec.ClearField(subscription.FieldMagnet, field.TypeString)
 	}
 	if value, ok := _u.mutation.TaskID(); ok {
 		_spec.SetField(subscription.FieldTaskID, field.TypeInt, value)

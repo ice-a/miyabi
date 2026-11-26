@@ -12,7 +12,8 @@ import { notifyScanTask } from '@/features/tasks/task-toast'
 
 vi.mock('@/api/library', () => ({
   useRescrapeLibraryMovie: vi.fn(),
-  useStartLibraryScan: vi.fn()
+  useStartLibraryScan: vi.fn(),
+  useSetLibraryFavorite: vi.fn(() => ({ isPending: false, mutate: vi.fn() }))
 }))
 vi.mock('sonner', () => ({
   toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() }
@@ -80,7 +81,8 @@ function submission(action: 'rescrape' | 'scan' | 'rebuild') {
               rating: 0,
               actors: [],
               tags: [],
-              scrape_status: 'failed'
+              scrape_status: 'failed',
+              favorite: false
             }
           })
         : LibraryScanButton({
@@ -100,7 +102,10 @@ function submission(action: 'rescrape' | 'scan' | 'rebuild') {
   )
   const event = 'onClick'
   const controls = elements(tree).filter(element => typeof element.props[event] === 'function')
-  ;(controls[action === 'rebuild' ? 1 : 0]!.props[event] as () => void)()
+  // LibraryMovieActions lists favorite before rescrape, so pick by index:
+  // rescrape = 1, while LibraryScanButton keeps scan = 0 / rebuild = 1.
+  const controlIndex = action === 'scan' ? 0 : 1
+  ;(controls[controlIndex]!.props[event] as () => void)()
   const callbacks = mutate.mock.calls[0]![1] as { onSuccess: (task: ScanTask) => void }
   return { client, complete: () => callbacks.onSuccess(queued) }
 }

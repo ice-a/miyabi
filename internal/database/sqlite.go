@@ -59,6 +59,10 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 		client.Close()
 		return nil, fmt.Errorf("initialize database indexes: %w", err)
 	}
+	if err := migrateLegacySubscriptionStatus(ctx, db); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("migrate legacy subscription status: %w", err)
+	}
 
 	return &Store{Client: client, db: db}, nil
 }

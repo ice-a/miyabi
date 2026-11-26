@@ -535,6 +535,16 @@ func AvatarContainsFold(v string) predicate.Actor {
 	return predicate.Actor(sql.FieldContainsFold(FieldAvatar, v))
 }
 
+// AliasesIsNil applies the IsNil predicate on the "aliases" field.
+func AliasesIsNil() predicate.Actor {
+	return predicate.Actor(sql.FieldIsNull(FieldAliases))
+}
+
+// AliasesNotNil applies the NotNil predicate on the "aliases" field.
+func AliasesNotNil() predicate.Actor {
+	return predicate.Actor(sql.FieldNotNull(FieldAliases))
+}
+
 // HasMovies applies the HasEdge predicate on the "movies" edge.
 func HasMovies() predicate.Actor {
 	return predicate.Actor(func(s *sql.Selector) {

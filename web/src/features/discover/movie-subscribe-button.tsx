@@ -1,4 +1,4 @@
-import { BellPlusIcon, BellRingIcon, CircleCheckIcon, LoaderCircleIcon } from 'lucide-react'
+import { BellPlusIcon, BellRingIcon, LoaderCircleIcon } from 'lucide-react'
 import type { MouseEvent } from 'react'
 
 import type { DiscoverMovie } from '@/api/discover'
@@ -11,8 +11,7 @@ export function MovieSubscribeButton({ movie }: { movie: DiscoverMovie }) {
   const { subscription, isPending } = useSubscription('movie', movie.id)
   const add = useAddSubscription()
   const waiting = subscription?.status === 'waiting'
-  const added = subscription?.status === 'added'
-  const canSubscribe = !waiting && !added
+  const canSubscribe = !waiting
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
@@ -34,8 +33,6 @@ export function MovieSubscribeButton({ movie }: { movie: DiscoverMovie }) {
         >
           {add.isPending ? (
             <LoaderCircleIcon className="animate-spin" />
-          ) : added ? (
-            <CircleCheckIcon />
           ) : waiting ? (
             <BellRingIcon />
           ) : (
@@ -46,11 +43,9 @@ export function MovieSubscribeButton({ movie }: { movie: DiscoverMovie }) {
       <TooltipContent side="left">
         {waiting
           ? '已订阅，将持续检查符合偏好的磁力'
-          : added
-            ? '已匹配磁力'
-            : subscription
-              ? '重新订阅'
-              : '订阅影片'}
+          : subscription
+            ? '重新订阅'
+            : '订阅影片'}
       </TooltipContent>
     </Tooltip>
   )
